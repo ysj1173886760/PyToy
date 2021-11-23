@@ -17,10 +17,11 @@ class VGG19(object):
             # 'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3', 'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
             # 'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3', 'relu5_3', 'conv5_4', 'relu5_4', 'pool5',
             # 'flatten', 'fc6', 'relu6', 'fc7', 'relu7', 'fc8', 'softmax'
-            'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
-            'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
-            'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3', 'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
-            'flatten', 'fc6', 'relu6', 'fc7', 'softmax'
+            'conv1_1', 'relu1_2', 'pool1', 
+            'conv2_1', 'relu2_2', 'pool2', 
+            'conv3_1', 'relu3_2', 'pool3', 
+            'conv4_1', 'relu4_2', 'pool4', 
+            'flatten', 'fc6', 'softmax'
         ]
 
     def build_model(self):
@@ -30,29 +31,29 @@ class VGG19(object):
 
         # 32 * 32 * 3
         self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1)
-        self.layers['relu1_1'] = ReLULayer()
-        self.layers['conv1_2'] = ConvolutionalLayer(3, 64, 64, 1, 1)
         self.layers['relu1_2'] = ReLULayer()
         self.layers['pool1'] = MaxPoolingLayer(2, 2)
-
-        # 16 * 16 * 64
         self.layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1)
-        self.layers['relu2_1'] = ReLULayer()
-        self.layers['conv2_2'] = ConvolutionalLayer(3, 128, 128, 1, 1)
         self.layers['relu2_2'] = ReLULayer()
         self.layers['pool2'] = MaxPoolingLayer(2, 2)
-        
-        # 8 * 8 * 128
 
         self.layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1)
-        self.layers['relu3_1'] = ReLULayer()
-        self.layers['conv3_2'] = ConvolutionalLayer(3, 256, 256, 1, 1)
         self.layers['relu3_2'] = ReLULayer()
-        self.layers['conv3_3'] = ConvolutionalLayer(3, 256, 256, 1, 1)
-        self.layers['relu3_3'] = ReLULayer()
-        self.layers['conv3_4'] = ConvolutionalLayer(3, 256, 256, 1, 1)
-        self.layers['relu3_4'] = ReLULayer()
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
+
+        self.layers['conv4_1'] = ConvolutionalLayer(3, 256, 512, 1, 1)
+        self.layers['relu4_2'] = ReLULayer()
+        self.layers['pool4'] = MaxPoolingLayer(2, 2)
+
+        # self.layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1)
+        # self.layers['relu3_1'] = ReLULayer()
+        # self.layers['conv3_2'] = ConvolutionalLayer(3, 256, 256, 1, 1)
+        # self.layers['relu3_2'] = ReLULayer()
+        # self.layers['conv3_3'] = ConvolutionalLayer(3, 256, 256, 1, 1)
+        # self.layers['relu3_3'] = ReLULayer()
+        # self.layers['conv3_4'] = ConvolutionalLayer(3, 256, 256, 1, 1)
+        # self.layers['relu3_4'] = ReLULayer()
+        # self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
         # 4 * 4 * 256
 
@@ -76,12 +77,8 @@ class VGG19(object):
         # self.layers['relu5_4'] = ReLULayer()
         # self.layers['pool5'] = MaxPoolingLayer(2, 2)
 
-        self.layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
-        self.layers['fc6'] = FullyConnectedLayer(4096, 1024)
-        self.layers['relu6'] = ReLULayer()
-        self.layers['fc7'] = FullyConnectedLayer(1024, 10)
-        # self.layers['relu7'] = ReLULayer()
-        # self.layers['fc8'] = FullyConnectedLayer(1024, 10)
+        self.layers['flatten'] = FlattenLayer((512, 2, 2), (2048, ))
+        self.layers['fc6'] = FullyConnectedLayer(2048, 10)
 
         self.layers['softmax'] = SoftmaxLossLayer()
 
@@ -161,7 +158,7 @@ def unpickle(file):
 
 if __name__ == '__main__':
     TRAIN_STEP = 100
-    LEARNING_RATE = 1
+    LEARNING_RATE = 0.1
     BATCH_SIZE = 100
     PRINT_ITER = 10
     data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']

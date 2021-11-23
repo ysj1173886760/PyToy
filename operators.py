@@ -57,7 +57,7 @@ class SoftmaxLossLayer(object):
 
     def forward(self, input):  # 前向传播的计算
         input_max = np.max(input, axis=1, keepdims=True)
-        input_exp = np.exp(input - input_max)
+        input_exp = np.exp(input - input_max).astype(np.float32)
         self.prob = input_exp / np.sum(input_exp, axis=1, keepdims=True)
         return self.prob
 
@@ -196,7 +196,6 @@ class MaxPoolingLayer(object):
         return self.output
 
     def backward(self, top_diff):
-        # TODO: 改进backward函数，使得计算加速
         bottom_diff = np.zeros(self.input.shape)
         contrib = self.max_elements * (top_diff.reshape(list(top_diff.shape) + [1]))
         for x in range(top_diff.shape[2]):
