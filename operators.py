@@ -68,8 +68,8 @@ class SoftmaxLossLayer(object):
         loss = -np.sum(np.log(self.prob) * self.label_onehot) / self.batch_size
         return loss
 
-    def backward(self):  # 反向传播的计算
-        # TODO：softmax 损失层的反向传播，计算本层损失
+    def backward(self, top_diff):  # 反向传播的计算
+        # top_diff here is useless, because we are starting from here
         bottom_diff = (self.prob - self.label_onehot) / self.batch_size
         return bottom_diff
 
@@ -87,14 +87,13 @@ class ConvolutionalLayer(object):
         self.bias = np.zeros([self.channel_out])
 
     def forward(self, input):
-        # TODO: 改进forward函数，使得计算加速
         self.input = input # [N, C, H, W]
         height = input.shape[2] + 2 * self.padding
         width = input.shape[3] + 2 * self.padding
         self.input_pad = np.zeros([self.input.shape[0], self.input.shape[1], height, width])
         self.input_pad[:, :, self.padding: self.padding + input.shape[2], self.padding: self.padding + input.shape[3]] = self.input
-        height_out = (height - self.kernel_size) / self.stride + 1
-        width_out = (width - self.kernel_size) / self.stride + 1
+        height_out = int((height - self.kernel_size) / self.stride) + 1
+        width_out = int((width - self.kernel_size) / self.stride) + 1
         mat_w = self.kernel_size * self.kernel_size * self.channel_in
         mat_h = height_out * width_out
 
@@ -114,8 +113,8 @@ class ConvolutionalLayer(object):
     def backward(self, top_diff):
         # top_diff batch, cout, h, w
 
-        height_out = (self.input.shape[2] + 2 * self.padding - self.kernel_size) / self.stride + 1
-        width_out = (self.input.shape[3] + 2 * self.padding - self.kernel_size) / self.stride + 1
+        height_out = int((self.input.shape[2] + 2 * self.padding - self.kernel_size) / self.stride) + 1
+        width_out = int((self.input.shape[3] + 2 * self.padding - self.kernel_size) / self.stride) + 1
 
         # cout, batch, h, w
         top_diff_col = np.transpose(top_diff, [1, 0, 2, 3]).reshape(top_diff.shape[1], -1)
@@ -127,8 +126,8 @@ class ConvolutionalLayer(object):
         self.d_bias = top_diff_col.sum(axis=1)
         
         backward_col = np.empty((top_diff.shape[0], self.input.shape[2] * self.input.shape[3], self.kernel_size * self.kernel_size * self.channel_out))
-        pad_height = ((self.input.shape[2] - 1) * self.stride + self.kernel_size - height_out) / 2
-        pad_width = ((self.input.shape[3] - 1) * self.stride + self.kernel_size - width_out) / 2
+        pad_height = int(((self.input.shape[2] - 1) * self.stride + self.kernel_size - height_out) / 2)
+        pad_width = int(((self.input.shape[3] - 1) * self.stride + self.kernel_size - width_out) / 2)
         top_diff_pad = np.zeros((top_diff.shape[0], top_diff.shape[1], height_out + 2 * pad_height, width_out + 2 * pad_width))
         top_diff_pad[:, :, pad_height: height_out + pad_height, pad_width: width_out + pad_width] = top_diff
         cur = 0
@@ -164,16 +163,15 @@ class ConvolutionalLayer(object):
         self.bias = bias
 
 class MaxPoolingLayer(object):
-    def __init__(self, kernel_size, stride, type=1):
+    def __init__(self, kernel_size, stride):
         self.kernel_size = kernel_size
         self.stride = stride
         print('\tMax pooling layer with kernel size %d, stride %d.' % (self.kernel_size, self.stride))
 
     def forward(self, input):
-        # TODO: 改进forward函数，使得计算加速
         self.input = input # [N, C, H, W]
-        height_out = (self.input.shape[2] - self.kernel_size) / self.stride + 1
-        width_out = (self.input.shape[3] - self.kernel_size) / self.stride + 1
+        height_out = int((self.input.shape[2] - self.kernel_size) / self.stride) + 1
+        width_out = int((self.input.shape[3] - self.kernel_size) / self.stride) + 1
         mat_w = self.kernel_size * self.kernel_size
         mat_h = height_out * width_out
 
@@ -217,14 +215,10 @@ class FlattenLayer(object):
 
     def forward(self, input):
         assert list(input.shape[1:]) == list(self.input_shape)
-        # matconvnet feature map dim: [N, height, width, channel]
-        # ours feature map dim: [N, channel, height, width]
-        self.input = np.transpose(input, [0, 2, 3, 1])
-        self.output = self.input.reshape([self.input.shape[0]] + list(self.output_shape))
+        self.output = input.reshape([input.shape[0]] + list(self.output_shape))
         return self.output
 
     def backward(self, top_diff):
         assert list(top_diff.shape[1:]) == list(self.output_shape)
-        top_diff = np.transpose(top_diff, [0, 3, 1, 2])
         bottom_diff = top_diff.reshape([top_diff.shape[0]] + list(self.input_shape))
         return bottom_diff

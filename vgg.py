@@ -11,11 +11,16 @@ class VGG19(object):
     def __init__(self, param_path=''):
         self.param_path = param_path
         self.param_layer_name = [
+            # 'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
+            # 'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
+            # 'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3', 'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
+            # 'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3', 'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
+            # 'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3', 'relu5_3', 'conv5_4', 'relu5_4', 'pool5',
+            # 'flatten', 'fc6', 'relu6', 'fc7', 'relu7', 'fc8', 'softmax'
             'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
             'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
             'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3', 'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
-            'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3', 'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
-            'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3', 'relu5_3', 'conv5_4', 'relu5_4', 'pool5'
+            'flatten', 'fc6', 'relu6', 'fc7', 'softmax'
         ]
 
     def build_model(self):
@@ -23,17 +28,21 @@ class VGG19(object):
 
         self.layers = {}
 
+        # 32 * 32 * 3
         self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1)
         self.layers['relu1_1'] = ReLULayer()
         self.layers['conv1_2'] = ConvolutionalLayer(3, 64, 64, 1, 1)
         self.layers['relu1_2'] = ReLULayer()
         self.layers['pool1'] = MaxPoolingLayer(2, 2)
 
+        # 16 * 16 * 64
         self.layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1)
         self.layers['relu2_1'] = ReLULayer()
         self.layers['conv2_2'] = ConvolutionalLayer(3, 128, 128, 1, 1)
         self.layers['relu2_2'] = ReLULayer()
         self.layers['pool2'] = MaxPoolingLayer(2, 2)
+        
+        # 8 * 8 * 128
 
         self.layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1)
         self.layers['relu3_1'] = ReLULayer()
@@ -45,32 +54,34 @@ class VGG19(object):
         self.layers['relu3_4'] = ReLULayer()
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
-        self.layers['conv4_1'] = ConvolutionalLayer(3, 256, 512, 1, 1)
-        self.layers['relu4_1'] = ReLULayer()
-        self.layers['conv4_2'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu4_2'] = ReLULayer()
-        self.layers['conv4_3'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu4_3'] = ReLULayer()
-        self.layers['conv4_4'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu4_4'] = ReLULayer()
-        self.layers['pool4'] = MaxPoolingLayer(2, 2)
+        # 4 * 4 * 256
 
-        self.layers['conv5_1'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu5_1'] = ReLULayer()
-        self.layers['conv5_2'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu5_2'] = ReLULayer()
-        self.layers['conv5_3'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu5_3'] = ReLULayer()
-        self.layers['conv5_4'] = ConvolutionalLayer(3, 512, 512, 1, 1)
-        self.layers['relu5_4'] = ReLULayer()
-        self.layers['pool5'] = MaxPoolingLayer(2, 2)
+        # self.layers['conv4_1'] = ConvolutionalLayer(3, 256, 512, 1, 1)
+        # self.layers['relu4_1'] = ReLULayer()
+        # self.layers['conv4_2'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu4_2'] = ReLULayer()
+        # self.layers['conv4_3'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu4_3'] = ReLULayer()
+        # self.layers['conv4_4'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu4_4'] = ReLULayer()
+        # self.layers['pool4'] = MaxPoolingLayer(2, 2)
 
-        self.layers['flatten'] = FlattenLayer((512, 7, 7), (25088, ))
-        self.layers['fc6'] = FullyConnectedLayer(25088, 4096)
+        # self.layers['conv5_1'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu5_1'] = ReLULayer()
+        # self.layers['conv5_2'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu5_2'] = ReLULayer()
+        # self.layers['conv5_3'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu5_3'] = ReLULayer()
+        # self.layers['conv5_4'] = ConvolutionalLayer(3, 512, 512, 1, 1)
+        # self.layers['relu5_4'] = ReLULayer()
+        # self.layers['pool5'] = MaxPoolingLayer(2, 2)
+
+        self.layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
+        self.layers['fc6'] = FullyConnectedLayer(4096, 1024)
         self.layers['relu6'] = ReLULayer()
-        self.layers['fc7'] = FullyConnectedLayer(4096, 4096)
-        self.layers['relu7'] = ReLULayer()
-        self.layers['fc8'] = FullyConnectedLayer(4096, 1000)
+        self.layers['fc7'] = FullyConnectedLayer(1024, 10)
+        # self.layers['relu7'] = ReLULayer()
+        # self.layers['fc8'] = FullyConnectedLayer(1024, 10)
 
         self.layers['softmax'] = SoftmaxLossLayer()
 
@@ -87,28 +98,6 @@ class VGG19(object):
     def load_model(self):
         pass
 
-    def load_image(self, image_dir, image_height, image_width):
-        print('Loading and preprocessing image from ' + image_dir)
-        self.input_image = scipy.misc.imread(image_dir)
-        image_shape = self.input_image.shape
-        self.input_image = scipy.misc.imresize(self.input_image,[image_height, image_width,3])
-        self.input_image = np.array(self.input_image).astype(np.float32)
-        self.input_image -= self.image_mean
-        self.input_image = np.reshape(self.input_image, [1]+list(self.input_image.shape))
-        # input dim [N, channel, height, width]
-        self.input_image = np.moveaxis(self.input_image, 3, 1)
-        return self.input_image, image_shape
-
-    def save_image(self, input_image, image_shape, image_dir):
-        #print('Save image at ' + image_dir)
-        # [N, H, W, C]
-        # TODO：调整输出图片的形状
-        input_image = np.transpose(input_image, [0, 2, 3, 1])
-        input_image = input_image[0] + self.image_mean
-        input_image = np.clip(input_image, 0, 255).astype(np.uint8)
-        input_image = scipy.misc.imresize(input_image, image_shape)
-        scipy.misc.imsave(image_dir, input_image)
-
     def forward(self, input_image):
         # start_time = time.time()
         current = input_image
@@ -118,35 +107,43 @@ class VGG19(object):
         # print('Forward time: %f' % (time.time()-start_time))
         return current
 
-    def backward(self, dloss, layer_name):
+    def backward(self, dloss):
         # start_time = time.time()
-        layer_idx = list.index(self.param_layer_name, layer_name)
-        for idx in range(layer_idx, -1, -1):
+        for idx in range(len(self.param_layer_name) - 1, -1, -1):
             dloss = self.layers[self.param_layer_name[idx]].backward(dloss)
 
         #print('Backward time: %f' % (time.time()-start_time))
         return dloss
 
-    def evaluate(self, input_image):
-        prob = self.forward(input_image)
-        top1 = np.argmax(prob[0])
-        print('Classification result: id = %d, prob = %f' % (top1, prob[0, top1]))
+    def update(self, lr):
+        for layer_name in self.update_layer_list:
+            self.layers[layer_name].update_param(lr)
 
-def get_random_img(content_image, noise):
-    # 生成风格迁移初始化图片
-    noise_image = np.random.uniform(-20, 20, content_image.shape)
-    random_img = noise_image * noise + content_image * (1 - noise)
-    return random_img
+    def evaluate(self, test_data):
+        np.random.shuffle(test_data)
+        test = test_data[0: 100, :]
+        pred_results = np.zeros([test.shape[0]])
+        total_time = 0
+        for idx in range(int(test.shape[0] / BATCH_SIZE)):
+            batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE, : -1].reshape(-1, 3, 32, 32)
+            start = time.time()
+            prob = self.forward(batch_images)
+            end = time.time()
+            total_time += (end - start)
+            pred_labels = np.argmax(prob, axis=1)
+            pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
+        accuracy = np.mean(pred_results == test[:,-1])
+        print("inferencing time: %f"% (total_time))
+        print('Accuracy in test set: %f' % accuracy)
 
 class AdamOptimizer(object):
-    def __init__(self, lr, diff_shape):
+    def __init__(self, lr):
         self.beta1 = 0.9
         self.beta2 = 0.999
         self.eps = 1e-8
         self.lr = lr
-        self.mt = np.zeros(diff_shape)
-        self.vt = np.zeros(diff_shape)
         self.step = 0
+
     def update(self, input, grad):
         self.step += 1
         self.mt = self.beta1 * self.mt + (1 - self.beta1) * grad
@@ -156,59 +153,56 @@ class AdamOptimizer(object):
         output = input - self.lr * mt_hat / (np.sqrt(vt_hat) + self.eps)
         return output
 
+def unpickle(file):
+    import pickle
+    with open(file, 'rb') as fo:
+        dict = pickle.load(fo, encoding='bytes')
+    return dict
 
 if __name__ == '__main__':
-
-    CONTENT_LOSS_LAYERS = ['relu4_2']
-    STYLE_LOSS_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
-    NOISE = 0.5
-    ALPHA, BETA = 1, 500
     TRAIN_STEP = 100
-    LEARNING_RATE = 1.0
-    IMAGE_HEIGHT, IMAGE_WIDTH = 192, 320
+    LEARNING_RATE = 1
+    BATCH_SIZE = 100
+    PRINT_ITER = 10
+    data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
 
     vgg = VGG19()
     vgg.build_model()
     vgg.init_model()
-    vgg.load_model()
-    content_loss_layer = ContentLossLayer()
-    style_loss_layer = StyleLossLayer()
-    adam_optimizer = AdamOptimizer(1.0, [1, 3, IMAGE_HEIGHT, IMAGE_WIDTH])
+    adam_optimizer = AdamOptimizer(LEARNING_RATE)
+    
+    # load train data
+    for i, pth in enumerate(data_list):
+        data_pth = os.path.join('./data', pth)
+        data = unpickle(data_pth)
+        images = np.transpose(data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2]).reshape(-1, 32 * 32 * 3)
+        labels = np.array(data[b'labels']).reshape(-1, 1)
+        images = np.hstack((images, labels))
+        if i == 0:
+            train_data = images
+        else:
+            train_data = np.concatenate((train_data, images))
+    
+    # load test data
+    test_data = unpickle(os.path.join('./data', 'test_batch'))
+    test_data = np.hstack((np.transpose(test_data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2]).reshape(-1, 32 * 32 * 3), np.array(test_data[b'labels']).reshape(-1, 1)))
+    max_batch = int(train_data.shape[0] / BATCH_SIZE)
 
-    content_image, content_shape = vgg.load_image('../../weinisi.jpg', IMAGE_HEIGHT, IMAGE_WIDTH)
-    style_image, _ = vgg.load_image('../../style.jpg', IMAGE_HEIGHT, IMAGE_WIDTH)
-    content_layers = vgg.forward(content_image, CONTENT_LOSS_LAYERS)
-    style_layers = vgg.forward(style_image, STYLE_LOSS_LAYERS)
-    transfer_image = get_random_img(content_image, NOISE)
-
-    for step in range(TRAIN_STEP):
-        transfer_layers = vgg.forward(transfer_image, CONTENT_LOSS_LAYERS + STYLE_LOSS_LAYERS)
-        content_loss = np.array([])
-        style_loss = np.array([])
-        content_diff = np.zeros(transfer_image.shape)
-        style_diff = np.zeros(transfer_image.shape)
-        for layer in CONTENT_LOSS_LAYERS:
-            # TODO： 计算内容损失的前向传播
-            current_loss = content_loss_layer.forward(transfer_layers[layer], content_layers[layer])
-            content_loss = np.append(content_loss, current_loss)
-            # TODO： 计算内容损失的反向传播
-            dloss = content_loss_layer.backward(transfer_layers[layer], content_layers[layer])
-            content_diff += dloss
-        for layer in STYLE_LOSS_LAYERS:
-            # TODO： 计算风格损失的前向传播
-            current_loss = style_loss_layer.forward(transfer_layers[layer], style_layers[layer])
-            style_loss = np.append(style_loss, current_loss)
-            # TODO： 计算风格损失的反向传播
-            dloss = style_loss_layer.backward(transfer_layers[layer], style_layers[layer])
-            style_diff += dloss
-        total_loss = ALPHA * np.mean(content_loss) + BETA * np.mean(style_loss)
-        image_diff = ALPHA * content_diff / len(CONTENT_LOSS_LAYERS) + BETA * style_diff / len(STYLE_LOSS_LAYERS)
-        # TODO： 利用Adam优化器对风格迁移图像进行更新
-        transfer_image = adam_optimizer.update(transfer_image, image_diff)
-        if step % 20 == 0:
-            print('Step %d, loss = %f' % (step, total_loss), content_loss, style_loss)
-            vgg.save_image(transfer_image, content_shape, '../output/output_' + str(step) + '.jpg')
-
-
-
+    for epoch in range(TRAIN_STEP):
+        np.random.shuffle(train_data)
+        for cur in range(max_batch):
+            start_time = time.time()
+            batch_data = train_data[cur * BATCH_SIZE: cur * BATCH_SIZE + BATCH_SIZE]
+            batch_image = batch_data[:, 0: -1].reshape(-1, 3, 32, 32)
+            batch_label = batch_data[:, -1]
+            prob = vgg.forward(batch_image)
+            loss = vgg.layers['softmax'].get_loss(batch_label)
+            vgg.backward(loss)
+            vgg.update(LEARNING_RATE)
+            end_time = time.time()
+            # print("batch time %f" % (end_time - start_time))
+            if cur % PRINT_ITER == 0:
+                print('Epoch %d, iter %d, loss: %.6f' % (epoch, cur, loss))
+                vgg.evaluate(test_data)
+        
 
