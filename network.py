@@ -17,7 +17,7 @@ class Network(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc1', 'fc2', 'softmax'
+            'flatten', 'fc1', 'softmax'
         ]
 
     def build_model(self):
@@ -42,8 +42,7 @@ class Network(object):
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
         self.layers['flatten'] = FlattenLayer((64, 4, 4), (1024, ))
-        self.layers['fc1'] = FullyConnectedLayer(1024, 1024, 0.1)
-        self.layers['fc2'] = FullyConnectedLayer(1024, 10, 0.1)
+        self.layers['fc1'] = FullyConnectedLayer(1024, 10, 0.1)
 
         self.layers['softmax'] = SoftmaxLossLayer()
 
@@ -98,10 +97,10 @@ def unpickle(file):
 
 if __name__ == '__main__':
     TRAIN_STEP = 100
-    LEARNING_RATE = 0.1
+    LEARNING_RATE = 0.01
     BATCH_SIZE = 100
-    # data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
-    data_list = ['data_batch_1']
+    data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
+    # data_list = ['data_batch_1']
 
     net = Network(LEARNING_RATE, "Adam")
     net.build_model()
@@ -134,14 +133,16 @@ if __name__ == '__main__':
         train_data = train_data[random_index]
         train_label = train_label[random_index]
         bar = tqdm.tqdm(range(max_batch))
+        total_loss = 0
         for cur in bar:
             batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
             batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
             prob = net.forward(batch_image)
             loss = net.layers['softmax'].get_loss(batch_label)
+            total_loss += loss
             net.backward(loss)
             net.update()
-            bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, loss, last_accuracy))
+            bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy))
             # print("batch time %f" % (end_time - start_time))
             
         last_accuracy = net.evaluate(test_data, test_label)
