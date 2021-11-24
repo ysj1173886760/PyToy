@@ -5,6 +5,7 @@ import struct
 import os
 import scipy.io
 import time
+import tqdm
 
 from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
@@ -15,7 +16,7 @@ class Network(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc1', 'softmax'
+            'flatten', 'fc1', 'fc2', 'softmax'
         ]
 
     def build_model(self):
@@ -40,7 +41,8 @@ class Network(object):
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
         self.layers['flatten'] = FlattenLayer((64, 4, 4), (1024, ))
-        self.layers['fc1'] = FullyConnectedLayer(1024, 10, 0.1)
+        self.layers['fc1'] = FullyConnectedLayer(1024, 1024, 0.1)
+        self.layers['fc2'] = FullyConnectedLayer(1024, 10, 0.1)
 
         self.layers['softmax'] = SoftmaxLossLayer()
 
@@ -78,22 +80,17 @@ class Network(object):
         for layer_name in self.update_layer_list:
             self.layers[layer_name].update_param(lr)
 
-    def evaluate(self, test_data):
-        np.random.shuffle(test_data)
+    def evaluate(self, test_data, test_label):
         test = cp.array(test_data)
+        label = cp.array(test_label)
         pred_results = cp.zeros([test.shape[0]])
-        total_time = 0
         for idx in range(int(test.shape[0] / BATCH_SIZE)):
-            batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE, : -1].reshape(-1, 3, 32, 32)
-            start = time.time()
+            batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE]
             prob = self.forward(batch_images, False)
-            end = time.time()
-            total_time += (end - start)
             pred_labels = cp.argmax(prob, axis=1)
             pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
-        accuracy = cp.mean(pred_results == test[:,-1])
-        print("inferencing time: %f"% (total_time))
-        print('Accuracy in test set: %f' % accuracy)
+        accuracy = cp.mean(pred_results == label)
+        return accuracy
 
 class AdamOptimizer(object):
     def __init__(self, lr):
@@ -122,7 +119,6 @@ if __name__ == '__main__':
     TRAIN_STEP = 100
     LEARNING_RATE = 0.1
     BATCH_SIZE = 100
-    PRINT_ITER = 10
     # data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
     data_list = ['data_batch_1']
 
@@ -135,34 +131,39 @@ if __name__ == '__main__':
     for i, pth in enumerate(data_list):
         data_pth = os.path.join('./data', pth)
         data = unpickle(data_pth)
-        images = np.transpose(data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2]).reshape(-1, 32 * 32 * 3)
-        labels = np.array(data[b'labels']).reshape(-1, 1)
-        images = np.hstack((images, labels))
+        images = np.transpose(data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2])
+        labels = np.array(data[b'labels']).reshape(-1)
         if i == 0:
             train_data = images
+            train_label = labels
         else:
             train_data = np.concatenate((train_data, images))
+            train_label = np.concatenate((train_label, labels))
     
     # load test data
-    test_data = unpickle(os.path.join('./data', 'test_batch'))
-    test_data = np.hstack((np.transpose(test_data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2]).reshape(-1, 32 * 32 * 3), np.array(test_data[b'labels']).reshape(-1, 1)))
-    max_batch = int(train_data.shape[0] / BATCH_SIZE)
+    test_data_raw = unpickle(os.path.join('./data', 'test_batch'))
+    test_data = np.transpose(test_data_raw[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2])
+    test_label = np.array(test_data_raw[b'labels']).reshape(-1)
+    random_index = np.arange(train_data.shape[0]).astype(int)
+    max_batch = train_data.shape[0] // BATCH_SIZE
+    last_accuracy = 0.0
 
+    # tqdm stuff
     for epoch in range(TRAIN_STEP):
-        np.random.shuffle(train_data)
-        for cur in range(max_batch):
-            start_time = time.time()
-            batch_data = cp.array(train_data[cur * BATCH_SIZE: cur * BATCH_SIZE + BATCH_SIZE])
-            batch_image = batch_data[:, 0: -1].reshape(-1, 3, 32, 32)
-            batch_label = batch_data[:, -1]
+        np.random.shuffle(random_index)
+        train_data = train_data[random_index]
+        train_label = train_label[random_index]
+        bar = tqdm.tqdm(range(max_batch))
+        for cur in bar:
+            batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
+            batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
             prob = net.forward(batch_image)
             loss = net.layers['softmax'].get_loss(batch_label)
             net.backward(loss)
             net.update(LEARNING_RATE)
-            end_time = time.time()
+            bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, loss, last_accuracy))
             # print("batch time %f" % (end_time - start_time))
-            if cur % PRINT_ITER == 0:
-                print('Epoch %d, iter %d, loss: %.6f' % (epoch, cur, loss))
-        net.evaluate(test_data)
+            
+        last_accuracy = net.evaluate(test_data, test_label)
         
 
