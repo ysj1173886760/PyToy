@@ -1,6 +1,6 @@
 # coding:utf-8
-# import numpy as np
-import cupy as np
+import numpy as np
+import cupy as cp
 import struct
 import os
 import scipy.io
@@ -80,8 +80,8 @@ class Network(object):
 
     def evaluate(self, test_data):
         np.random.shuffle(test_data)
-        test = test_data[0: 100, :]
-        pred_results = np.zeros([test.shape[0]])
+        test = cp.array(test_data)
+        pred_results = cp.zeros([test.shape[0]])
         total_time = 0
         for idx in range(int(test.shape[0] / BATCH_SIZE)):
             batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE, : -1].reshape(-1, 3, 32, 32)
@@ -89,9 +89,9 @@ class Network(object):
             prob = self.forward(batch_images, False)
             end = time.time()
             total_time += (end - start)
-            pred_labels = np.argmax(prob, axis=1)
+            pred_labels = cp.argmax(prob, axis=1)
             pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
-        accuracy = np.mean(pred_results == test[:,-1])
+        accuracy = cp.mean(pred_results == test[:,-1])
         print("inferencing time: %f"% (total_time))
         print('Accuracy in test set: %f' % accuracy)
 
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         np.random.shuffle(train_data)
         for cur in range(max_batch):
             start_time = time.time()
-            batch_data = train_data[cur * BATCH_SIZE: cur * BATCH_SIZE + BATCH_SIZE]
+            batch_data = cp.array(train_data[cur * BATCH_SIZE: cur * BATCH_SIZE + BATCH_SIZE])
             batch_image = batch_data[:, 0: -1].reshape(-1, 3, 32, 32)
             batch_label = batch_data[:, -1]
             prob = net.forward(batch_image)
@@ -163,6 +163,6 @@ if __name__ == '__main__':
             # print("batch time %f" % (end_time - start_time))
             if cur % PRINT_ITER == 0:
                 print('Epoch %d, iter %d, loss: %.6f' % (epoch, cur, loss))
-                net.evaluate(test_data)
+        net.evaluate(test_data)
         
 
