@@ -10,8 +10,9 @@ import tqdm
 from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
 class Network(object):
-    def __init__(self, param_path=''):
-        self.param_path = param_path
+    def __init__(self, lr = 1, optimizer=False):
+        self.optimizer = optimizer
+        self.lr = lr
         self.param_layer_name = [
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
@@ -54,10 +55,7 @@ class Network(object):
     def init_model(self):
         print('Initializing parameters of each layer...')
         for layer_name in self.update_layer_list:
-            self.layers[layer_name].init_param()
-
-    def load_model(self):
-        pass
+            self.layers[layer_name].init_param(self.lr, self.optimizer)
 
     def forward(self, input_image, train=True):
         # start_time = time.time()
@@ -76,9 +74,9 @@ class Network(object):
         #print('Backward time: %f' % (time.time()-start_time))
         return dloss
 
-    def update(self, lr):
+    def update(self):
         for layer_name in self.update_layer_list:
-            self.layers[layer_name].update_param(lr)
+            self.layers[layer_name].update_param()
 
     def evaluate(self, test_data, test_label):
         test = cp.array(test_data)
@@ -105,7 +103,7 @@ if __name__ == '__main__':
     # data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
     data_list = ['data_batch_1']
 
-    net = Network()
+    net = Network(LEARNING_RATE, "Adam")
     net.build_model()
     net.init_model()
     
@@ -142,7 +140,7 @@ if __name__ == '__main__':
             prob = net.forward(batch_image)
             loss = net.layers['softmax'].get_loss(batch_label)
             net.backward(loss)
-            net.update(LEARNING_RATE)
+            net.update()
             bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, loss, last_accuracy))
             # print("batch time %f" % (end_time - start_time))
             

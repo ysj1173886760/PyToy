@@ -16,3 +16,12 @@ class AdamOptimizer(object):
         vt_hat = self.vt / (1 - cp.power(self.beta2, self.step))
         output = input - self.lr * mt_hat / (cp.sqrt(vt_hat) + self.eps)
         return output
+
+def init_optimizer(lr, optimizer):
+    # stupid implementation here, need to find some way to amend this
+    if not optimizer:
+        if optimizer == 'Adam':
+            self_optimizer = AdamOptimizer(lr)
+    else:
+        self_optimizer = False
+    return lr, self_optimizer

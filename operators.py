@@ -5,6 +5,7 @@ import numpy as np
 import struct
 import os
 import time
+from optimizer import AdamOptimizer, init_optimizer
 
 class FullyConnectedLayer(object):
     def __init__(self, num_input, num_output, std=0.01):  # 全连接层初始化
@@ -13,9 +14,10 @@ class FullyConnectedLayer(object):
         self.std = std
         print('\tFully connected layer with input %d, output %d.' % (self.num_input, self.num_output))
 
-    def init_param(self):  # 参数初始化
+    def init_param(self, lr, optimizer):  # 参数初始化
         self.weight = cp.random.normal(loc=0.0, scale=self.std, size=(self.num_input, self.num_output))
         self.bias = cp.zeros([1, self.num_output])
+        self.lr, self.optimizer = init_optimizer(lr, optimizer)
 
     def forward(self, input, train=True):  # 前向传播计算
         self.input = input
@@ -28,9 +30,13 @@ class FullyConnectedLayer(object):
         bottom_diff = cp.matmul(top_diff, self.weight.T)
         return bottom_diff
 
-    def update_param(self, lr):  # 参数更新
-        self.weight = self.weight - lr * self.d_weight
-        self.bias = self.bias - lr * cp.sum(self.d_bias, axis=1)
+    def update_param(self):  # 参数更新
+        if not self.optimizer:
+            self.weight = self.weight - self.lr * self.d_weight
+            self.bias = self.bias - self.lr * cp.sum(self.d_bias, axis=1)
+        else:
+            self.weight = self.optimizer.update(self.weight, self.d_weight)
+            self.bias = self.optimizer.update(self.bias, cp.sum(self.d_bias, axis=1))
 
     def load_param(self, weight, bias):  # 参数加载
         assert self.weight.shape == weight.shape, "{} {}".format(self.weight.shape, weight.shape)
@@ -87,9 +93,10 @@ class ConvolutionalLayer(object):
         self.std = std
         print('\tConvolutional layer with kernel size %d, input channel %d, output channel %d.' % (self.kernel_size, self.channel_in, self.channel_out))
 
-    def init_param(self):
+    def init_param(self, lr, optimizer):
         self.weight = cp.random.normal(loc=0.0, scale=self.std, size=(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out))
         self.bias = cp.zeros([self.channel_out])
+        self.lr, self.optimizer = init_optimizer(lr, optimizer)
 
     def forward(self, input, train=True):
         self.input = input # [N, C, H, W]
@@ -157,9 +164,14 @@ class ConvolutionalLayer(object):
     def get_gradient(self):
         return self.d_weight, self.d_bias
 
-    def update_param(self, lr):
-        self.weight += - lr * self.d_weight
-        self.bias += - lr * self.d_bias
+    def update_param(self):
+        if not self.optimizer:
+            self.weight += - self.lr * self.d_weight
+            self.bias += - self.lr * self.d_bias
+        else:
+            self.weight = self.optimizer.update(self.weight, self.d_weight)
+            self.bias = self.optimizer.update(self.bias, self.d_bias)
+
 
     def load_param(self, weight, bias):
         assert self.weight.shape == weight.shape
@@ -233,7 +245,8 @@ class BatchNormLayer(object):
     def __init__(self, dims: tuple) -> None:
         self.dims = dims
 
-    def init_param(self):
+    def init_param(self, lr, optimizer):
+        self.lr, self.optimizer = init_optimizer(lr, optimizer)
         self.gamma = cp.ones(([1] + list(self.dims)), dtype="float32")
         self.bias = cp.zeros(([1] + list(self.dims)), dtype="float32")
 
@@ -306,6 +319,10 @@ class BatchNormLayer(object):
         return standard_grad * stddev_inv + var_grad * aux_x_minus_mean + \
                mean_grad / self.num_examples
 
-    def update_param(self, learning_rate: float) -> None:
-        self.gamma -= learning_rate * self.gamma_grad
-        self.bias -= learning_rate * self.bias_grad
+    def update_param(self) -> None:
+        if not self.optimizer:
+            self.gamma -= self.lr * self.gamma_grad
+            self.bias -= self.lr * self.bias_grad
+        else:
+            self.gamma = self.optimizer.update(self.gamma, self.gamma_grad)
+            self.bias = self.optimizer.update(self.bias, self.bias_grad)
