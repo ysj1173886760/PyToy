@@ -5,15 +5,15 @@ import os
 import scipy.io
 import time
 
-from operators import FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
+from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
 class Network(object):
     def __init__(self, param_path=''):
         self.param_path = param_path
         self.param_layer_name = [
-            'conv1_1', 'relu1_2', 'pool1', 
-            'conv2_1', 'relu2_2', 'pool2', 
-            'conv3_1', 'relu3_2', 'pool3', 
+            'conv1_1', 'bn1', 'relu1_2', 'pool1',  
+            'conv2_1', 'bn2', 'relu2_2', 'pool2', 
+            'conv3_1', 'bn3', 'relu3_2', 'pool3', 
             'flatten', 'fc6', 'softmax'
         ]
 
@@ -23,14 +23,18 @@ class Network(object):
         self.layers = {}
 
         # 32 * 32 * 3
-        self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 32, 1, 1, 0.0001)
+        self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 32, 1, 1, 0.01)
+        self.layers['bn1'] = BatchNormLayer((32, 32, 32))
         self.layers['relu1_2'] = ReLULayer()
         self.layers['pool1'] = MaxPoolingLayer(2, 2)
+
         self.layers['conv2_1'] = ConvolutionalLayer(3, 32, 32, 1, 1, 0.01)
+        self.layers['bn2'] = BatchNormLayer((32, 16, 16))
         self.layers['relu2_2'] = ReLULayer()
         self.layers['pool2'] = MaxPoolingLayer(2, 2)
 
         self.layers['conv3_1'] = ConvolutionalLayer(3, 32, 64, 1, 1, 0.01)
+        self.layers['bn3'] = BatchNormLayer((64, 8, 8))
         self.layers['relu3_2'] = ReLULayer()
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
@@ -41,7 +45,7 @@ class Network(object):
 
         self.update_layer_list = []
         for layer_name in self.layers.keys():
-            if 'conv' in layer_name or 'fc' in layer_name:
+            if ('conv' in layer_name) or ('fc' in layer_name) or ('bn' in layer_name):
                 self.update_layer_list.append(layer_name)
 
     def init_model(self):
@@ -52,12 +56,12 @@ class Network(object):
     def load_model(self):
         pass
 
-    def forward(self, input_image):
+    def forward(self, input_image, train=True):
         # start_time = time.time()
         current = input_image
         for idx in range(len(self.param_layer_name)):
             # TODO： 计算VGG19网络的前向传播
-            current = self.layers[self.param_layer_name[idx]].forward(current)
+            current = self.layers[self.param_layer_name[idx]].forward(current, train)
         # print('Forward time: %f' % (time.time()-start_time))
         return current
 
@@ -81,7 +85,7 @@ class Network(object):
         for idx in range(int(test.shape[0] / BATCH_SIZE)):
             batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE, : -1].reshape(-1, 3, 32, 32)
             start = time.time()
-            prob = self.forward(batch_images)
+            prob = self.forward(batch_images, False)
             end = time.time()
             total_time += (end - start)
             pred_labels = np.argmax(prob, axis=1)

@@ -15,7 +15,7 @@ class FullyConnectedLayer(object):
         self.weight = np.random.normal(loc=0.0, scale=self.std, size=(self.num_input, self.num_output))
         self.bias = np.zeros([1, self.num_output])
 
-    def forward(self, input):  # 前向传播计算
+    def forward(self, input, train=True):  # 前向传播计算
         self.input = input
         self.output = np.matmul(input, self.weight) + self.bias
         return self.output
@@ -43,7 +43,7 @@ class ReLULayer(object):
     def __init__(self):
         print('\tReLU layer.')
 
-    def forward(self, input):  # 前向传播的计算
+    def forward(self, input, train=True):  # 前向传播的计算
         self.input = input
         output = (input > 0) * input
         return output
@@ -57,7 +57,7 @@ class SoftmaxLossLayer(object):
         self.eps = 1e-9
         print('\tSoftmax loss layer.')
 
-    def forward(self, input):  # 前向传播的计算
+    def forward(self, input, train=True):  # 前向传播的计算
         input_max = np.max(input, axis=1, keepdims=True)
         input_exp = np.exp(input - input_max).astype(np.float32)
         self.prob = input_exp / np.sum(input_exp, axis=1, keepdims=True)
@@ -89,7 +89,7 @@ class ConvolutionalLayer(object):
         self.weight = np.random.normal(loc=0.0, scale=self.std, size=(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out))
         self.bias = np.zeros([self.channel_out])
 
-    def forward(self, input):
+    def forward(self, input, train=True):
         self.input = input # [N, C, H, W]
         height = input.shape[2] + 2 * self.padding
         width = input.shape[3] + 2 * self.padding
@@ -171,7 +171,7 @@ class MaxPoolingLayer(object):
         self.stride = stride
         print('\tMax pooling layer with kernel size %d, stride %d.' % (self.kernel_size, self.stride))
 
-    def forward(self, input):
+    def forward(self, input, train=True):
         self.input = input # [N, C, H, W]
         height_out = int((self.input.shape[2] - self.kernel_size) / self.stride) + 1
         width_out = int((self.input.shape[3] - self.kernel_size) / self.stride) + 1
@@ -215,7 +215,7 @@ class FlattenLayer(object):
         assert np.prod(self.input_shape) == np.prod(self.output_shape)
         print('\tFlatten layer with input shape %s, output shape %s.' % (str(self.input_shape), str(self.output_shape)))
 
-    def forward(self, input):
+    def forward(self, input, train=True):
         assert list(input.shape[1:]) == list(self.input_shape)
         self.output = input.reshape([input.shape[0]] + list(self.output_shape))
         return self.output
@@ -224,3 +224,86 @@ class FlattenLayer(object):
         assert list(top_diff.shape[1:]) == list(self.output_shape)
         bottom_diff = top_diff.reshape([top_diff.shape[0]] + list(self.input_shape))
         return bottom_diff
+
+# referring https://github.com/renan-cunha/BatchNormalization
+class BatchNormLayer(object):
+
+    def __init__(self, dims: tuple) -> None:
+        self.dims = dims
+
+    def init_param(self):
+        self.gamma = np.ones(([1] + list(self.dims)), dtype="float32")
+        self.bias = np.zeros(([1] + list(self.dims)), dtype="float32")
+
+        self.running_mean_x = np.zeros(0)
+        self.running_var_x = np.zeros(0)
+
+        # forward params
+        self.var_x = np.zeros(0)
+        self.stddev_x = np.zeros(0)
+        self.x_minus_mean = np.zeros(0)
+        self.standard_x = np.zeros(0)
+        self.num_examples = 0
+        self.mean_x = np.zeros(0)
+        self.running_avg_gamma = 0.9
+
+        # backward params
+        self.gamma_grad = np.zeros(0)
+        self.bias_grad = np.zeros(0)
+
+    def update_running_variables(self) -> None:
+        is_mean_empty = np.array_equal(np.zeros(0), self.running_mean_x)
+        is_var_empty = np.array_equal(np.zeros(0), self.running_var_x)
+        if is_mean_empty != is_var_empty:
+            raise ValueError("Mean and Var running averages should be "
+                             "initilizaded at the same time")
+        if is_mean_empty:
+            self.running_mean_x = self.mean_x
+            self.running_var_x = self.var_x
+        else:
+            gamma = self.running_avg_gamma
+            self.running_mean_x = gamma * self.running_mean_x + \
+                                  (1.0 - gamma) * self.mean_x
+            self.running_var_x = gamma * self.running_var_x + \
+                                 (1. - gamma) * self.var_x
+
+
+    def forward(self, x: np.ndarray, train: bool = True) -> np.ndarray:
+        self.num_examples = x.shape[0]
+        if train:
+            self.mean_x = np.mean(x, axis=0, keepdims=True)
+            self.var_x = np.mean((x - self.mean_x) ** 2, axis=0, keepdims=True)
+            self.update_running_variables()
+        else:
+            self.mean_x = self.running_mean_x.copy()
+            self.var_x = self.running_var_x.copy()
+
+        self.var_x += 1e-9
+        self.stddev_x = np.sqrt(self.var_x)
+        self.x_minus_mean = x - self.mean_x
+        self.standard_x = self.x_minus_mean / self.stddev_x
+        return self.gamma * self.standard_x + self.bias
+
+    def backward(self, grad_input: np.ndarray) -> np.ndarray:
+        standard_grad = grad_input * self.gamma
+
+        var_grad = np.sum(standard_grad * self.x_minus_mean * -0.5 * self.var_x ** (-3/2),
+                          axis=0, keepdims=True)
+        stddev_inv = 1 / self.stddev_x
+        aux_x_minus_mean = 2 * self.x_minus_mean / self.num_examples
+
+        mean_grad = (np.sum(standard_grad * -stddev_inv, axis=0,
+                            keepdims=True) +
+                            var_grad * np.sum(-aux_x_minus_mean, axis=0,
+                            keepdims=True))
+
+        self.gamma_grad = np.sum(grad_input * self.standard_x, axis=0,
+                                 keepdims=True)
+        self.bias_grad = np.sum(grad_input, axis=0, keepdims=True)
+
+        return standard_grad * stddev_inv + var_grad * aux_x_minus_mean + \
+               mean_grad / self.num_examples
+
+    def update_param(self, learning_rate: float) -> None:
+        self.gamma -= learning_rate * self.gamma_grad
+        self.bias -= learning_rate * self.bias_grad
