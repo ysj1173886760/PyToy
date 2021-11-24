@@ -14,7 +14,7 @@ class Network(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc6', 'softmax'
+            'flatten', 'fc1', 'softmax'
         ]
 
     def build_model(self):
@@ -39,7 +39,7 @@ class Network(object):
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
         self.layers['flatten'] = FlattenLayer((64, 4, 4), (1024, ))
-        self.layers['fc6'] = FullyConnectedLayer(1024, 10, 0.1)
+        self.layers['fc1'] = FullyConnectedLayer(1024, 10, 0.1)
 
         self.layers['softmax'] = SoftmaxLossLayer()
 
