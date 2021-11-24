@@ -1,5 +1,6 @@
 # coding:utf-8
-import numpy as np
+# import numpy as np
+import cupy as np
 import struct
 import os
 import scipy.io

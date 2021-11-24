@@ -1,5 +1,7 @@
 # coding=utf-8
-import numpy as np
+# import numpy as np
+import cupy as np
+import numpy
 import struct
 import os
 import time
@@ -212,7 +214,7 @@ class FlattenLayer(object):
     def __init__(self, input_shape, output_shape):
         self.input_shape = input_shape
         self.output_shape = output_shape
-        assert np.prod(self.input_shape) == np.prod(self.output_shape)
+        assert numpy.prod(self.input_shape) == numpy.prod(self.output_shape)
         print('\tFlatten layer with input shape %s, output shape %s.' % (str(self.input_shape), str(self.output_shape)))
 
     def forward(self, input, train=True):
