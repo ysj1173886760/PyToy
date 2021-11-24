@@ -5,13 +5,14 @@ import os
 import time
 
 class FullyConnectedLayer(object):
-    def __init__(self, num_input, num_output):  # 全连接层初始化
+    def __init__(self, num_input, num_output, std=0.01):  # 全连接层初始化
         self.num_input = num_input
         self.num_output = num_output
+        self.std = std
         print('\tFully connected layer with input %d, output %d.' % (self.num_input, self.num_output))
 
-    def init_param(self, std=0.01):  # 参数初始化
-        self.weight = np.random.normal(loc=0.0, scale=std, size=(self.num_input, self.num_output))
+    def init_param(self):  # 参数初始化
+        self.weight = np.random.normal(loc=0.0, scale=self.std, size=(self.num_input, self.num_output))
         self.bias = np.zeros([1, self.num_output])
 
     def forward(self, input):  # 前向传播计算
@@ -53,6 +54,7 @@ class ReLULayer(object):
 
 class SoftmaxLossLayer(object):
     def __init__(self):
+        self.eps = 1e-9
         print('\tSoftmax loss layer.')
 
     def forward(self, input):  # 前向传播的计算
@@ -65,7 +67,7 @@ class SoftmaxLossLayer(object):
         self.batch_size = self.prob.shape[0]
         self.label_onehot = np.zeros_like(self.prob)
         self.label_onehot[np.arange(self.batch_size), label] = 1.0
-        loss = -np.sum(np.log(self.prob) * self.label_onehot) / self.batch_size
+        loss = -np.sum(np.log(self.prob + self.eps) * self.label_onehot) / self.batch_size
         return loss
 
     def backward(self, top_diff):  # 反向传播的计算
@@ -74,16 +76,17 @@ class SoftmaxLossLayer(object):
         return bottom_diff
 
 class ConvolutionalLayer(object):
-    def __init__(self, kernel_size, channel_in, channel_out, padding, stride):
+    def __init__(self, kernel_size, channel_in, channel_out, padding, stride, std=0.1):
         self.kernel_size = kernel_size
         self.channel_in = channel_in
         self.channel_out = channel_out
         self.padding = padding
         self.stride = stride
+        self.std = std
         print('\tConvolutional layer with kernel size %d, input channel %d, output channel %d.' % (self.kernel_size, self.channel_in, self.channel_out))
 
-    def init_param(self, std=0.01):
-        self.weight = np.random.normal(loc=0.0, scale=std, size=(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out))
+    def init_param(self):
+        self.weight = np.random.normal(loc=0.0, scale=self.std, size=(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out))
         self.bias = np.zeros([self.channel_out])
 
     def forward(self, input):
