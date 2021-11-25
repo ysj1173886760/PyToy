@@ -11,7 +11,7 @@ def load_data(data_dir, data_list):
     for i, pth in enumerate(data_list):
         data_pth = os.path.join(data_dir, pth)
         data = unpickle(data_pth)
-        images = np.transpose(data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2])
+        images = data[b'data'].reshape(-1, 3, 32, 32)
         labels = np.array(data[b'labels']).reshape(-1)
         if i == 0:
             res_data = images

@@ -3,7 +3,7 @@ import numpy as np
 import cupy as cp
 import struct
 import os
-import scipy.io
+import imageio
 import time
 import tqdm
 from data_augumentation import dataAugumentor
@@ -112,6 +112,7 @@ if __name__ == '__main__':
 
     # preprocess data
     augumentor = dataAugumentor()
+
     train_data = augumentor.augument(train_data, True)
     test_data = augumentor.augument(test_data, False)
 
