@@ -6,6 +6,7 @@ import os
 import scipy.io
 import time
 import tqdm
+from data_augumentation import dataAugumentor
 from dataloader import load_data
 
 from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
@@ -110,14 +111,9 @@ if __name__ == '__main__':
     test_data, test_label = load_data(DATA_DIR, test_list)
 
     # preprocess data
-    train_data = train_data / 255
-    test_data = test_data / 255
-    mean = np.mean(train_data, axis=(0, 2, 3))
-    std = np.var(train_data, axis=(0, 2, 3))
-    print("mean ", mean, " std ", std)
-    for i in range(3):
-        train_data[:, i, :, :] = (train_data[:, i, :, :] - mean[i]) / std[i]
-        test_data[:, i, :, :] = (test_data[:, i, :, :] - mean[i]) / std[i]
+    augumentor = dataAugumentor()
+    train_data = augumentor.augument(train_data, True)
+    test_data = augumentor.augument(test_data, False)
 
     random_index = np.arange(train_data.shape[0]).astype(int)
     max_batch = train_data.shape[0] // BATCH_SIZE
