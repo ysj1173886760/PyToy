@@ -10,7 +10,7 @@ class AdamOptimizer(object):
 
     def update(self, input, grad):
         self.step += 1
-        self.mt = cp.add(cp.multiply(self.beta1, self.mt), (1 - self.beta1) * grad)
+        self.mt = cp.add(self.beta1 * self.mt, (1 - self.beta1) * grad)
         self.vt = cp.add(self.beta2 * self.vt + (1 - self.beta2) * cp.power(grad, 2))
         mt_hat = cp.divide(self.mt, (1 - cp.power(self.beta1, self.step)))
         vt_hat = cp.divide(self.vt, (1 - cp.power(self.beta2, self.step)))
@@ -19,7 +19,7 @@ class AdamOptimizer(object):
 
 def init_optimizer(lr, optimizer):
     # stupid implementation here, need to find some way to amend this
-    if not optimizer:
+    if optimizer:
         if optimizer == 'Adam':
             self_optimizer = AdamOptimizer(lr)
     else:

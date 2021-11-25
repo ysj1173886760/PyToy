@@ -1,4 +1,4 @@
-# coding:utf-8
+
 import numpy as np
 import cupy as cp
 import struct
@@ -11,43 +11,18 @@ from dataloader import load_data
 
 from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
+TRAIN_STEP = 100
+BATCH_SIZE = 100
+
 class Network(object):
     def __init__(self, lr = 1, optimizer=False):
         self.optimizer = optimizer
         self.lr = lr
-        self.param_layer_name = [
-            'conv1_1', 'bn1', 'relu1_2', 'pool1',  
-            'conv2_1', 'bn2', 'relu2_2', 'pool2', 
-            'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc1', 'fc2', 'softmax'
-        ]
 
-    def build_model(self):
+    def build_model(self, model):
         print('Building model...')
-
-        self.layers = {}
-
-        # 32 * 32 * 3
-        self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.001)
-        self.layers['bn1'] = BatchNormLayer((64, 32, 32))
-        self.layers['relu1_2'] = ReLULayer()
-        self.layers['pool1'] = MaxPoolingLayer(2, 2)
-
-        self.layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.001)
-        self.layers['bn2'] = BatchNormLayer((128, 16, 16))
-        self.layers['relu2_2'] = ReLULayer()
-        self.layers['pool2'] = MaxPoolingLayer(2, 2)
-
-        self.layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.001)
-        self.layers['bn3'] = BatchNormLayer((256, 8, 8))
-        self.layers['relu3_2'] = ReLULayer()
-        self.layers['pool3'] = MaxPoolingLayer(2, 2)
-
-        self.layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
-        self.layers['fc1'] = FullyConnectedLayer(4096, 1024, 0.001)
-        self.layers['fc2'] = FullyConnectedLayer(1024, 10, 0.001)
-
-        self.layers['softmax'] = SoftmaxLossLayer()
+        self.param_layer_name = model['layer_name']
+        self.layers = model['layers']
 
         self.update_layer_list = []
         for layer_name in self.layers.keys():
@@ -91,54 +66,101 @@ class Network(object):
             pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
         accuracy = cp.mean(pred_results == label)
         return accuracy
-
-
-if __name__ == '__main__':
-    TRAIN_STEP = 100
-    LEARNING_RATE = 0.01
-    BATCH_SIZE = 100
-    DATA_DIR = './data'
-    data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
-    test_list = ['test_batch']
-
-    net = Network(LEARNING_RATE, "Adam")
-    net.build_model()
-    net.init_model()
     
-    
-    # load train data
-    train_data, train_label = load_data(DATA_DIR, data_list)
-    # load test data
-    test_data, test_label = load_data(DATA_DIR, test_list)
+    def train(self, train_data, train_label, test_data, test_label):
+        random_index = np.arange(train_data.shape[0]).astype(int)
+        max_batch = train_data.shape[0] // BATCH_SIZE
+        last_accuracy = 0.0
 
-    # preprocess data
-    augumentor = dataAugumentor(toTensor=True, whiten=True, crop=False, rotate=False, noise=True)
+        # tqdm stuff
+        for epoch in range(TRAIN_STEP):
+            np.random.shuffle(random_index)
+            train_data = train_data[random_index]
+            train_label = train_label[random_index]
+            bar = tqdm.tqdm(range(max_batch))
+            total_loss = 0
+            for cur in bar:
+                batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
+                batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
+                prob = self.forward(batch_image)
+                loss = self.layers['softmax'].get_loss(batch_label)
+                total_loss += loss
+                self.backward(loss)
+                self.update()
+                bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy))
+                # print("batch time %f" % (end_time - start_time))
+                
+            last_accuracy = self.evaluate(test_data, test_label)
 
-    train_data = augumentor.augument(train_data, True)
-    test_data = augumentor.augument(test_data, False)
+class lightWeightNetwork(object):
+    def get_model(self):
+        param_layer_name = [
+            'conv1_1', 'bn1', 'relu1_2', 'pool1',  
+            'conv2_1', 'bn2', 'relu2_2', 'pool2', 
+            'conv3_1', 'bn3', 'relu3_2', 'pool3', 
+            'flatten', 'fc1', 'softmax'
+        ]
 
-    random_index = np.arange(train_data.shape[0]).astype(int)
-    max_batch = train_data.shape[0] // BATCH_SIZE
-    last_accuracy = 0.0
+        layers = {}
 
-    # tqdm stuff
-    for epoch in range(TRAIN_STEP):
-        np.random.shuffle(random_index)
-        train_data = train_data[random_index]
-        train_label = train_label[random_index]
-        bar = tqdm.tqdm(range(max_batch))
-        total_loss = 0
-        for cur in bar:
-            batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
-            batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
-            prob = net.forward(batch_image)
-            loss = net.layers['softmax'].get_loss(batch_label)
-            total_loss += loss
-            net.backward(loss)
-            net.update()
-            bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy))
-            # print("batch time %f" % (end_time - start_time))
-            
-        last_accuracy = net.evaluate(test_data, test_label)
-        
+        layers['conv1_1'] = ConvolutionalLayer(3, 3, 32, 1, 1, 0.1)
+        layers['bn1'] = BatchNormLayer((32, 32, 32))
+        layers['relu1_2'] = ReLULayer()
+        layers['pool1'] = MaxPoolingLayer(2, 2)
 
+        layers['conv2_1'] = ConvolutionalLayer(3, 32, 64, 1, 1, 0.1)
+        layers['bn2'] = BatchNormLayer((64, 16, 16))
+        layers['relu2_2'] = ReLULayer()
+        layers['pool2'] = MaxPoolingLayer(2, 2)
+
+        layers['conv3_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.01)
+        layers['bn3'] = BatchNormLayer((128, 8, 8))
+        layers['relu3_2'] = ReLULayer()
+        layers['pool3'] = MaxPoolingLayer(2, 2)
+
+        layers['flatten'] = FlattenLayer((128, 4, 4), (2048, ))
+        layers['fc1'] = FullyConnectedLayer(2048, 10, 0.01)
+
+        layers['softmax'] = SoftmaxLossLayer()
+
+        model = {}
+        model['layer_name'] = param_layer_name
+        model['layers'] = layers
+
+        return model
+
+class DeeperNetwork(object):
+    def get_model(self):
+        param_layer_name = [
+            'conv1_1', 'bn1', 'relu1_2', 'pool1',  
+            'conv2_1', 'bn2', 'relu2_2', 'pool2', 
+            'conv3_1', 'bn3', 'relu3_2', 'pool3', 
+            'flatten', 'fc1', 'fc2', 'softmax'
+        ]
+
+        layers = {}
+
+        layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.001)
+        layers['bn1'] = BatchNormLayer((64, 32, 32))
+        layers['relu1_2'] = ReLULayer()
+        layers['pool1'] = MaxPoolingLayer(2, 2)
+
+        layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.001)
+        layers['bn2'] = BatchNormLayer((128, 16, 16))
+        layers['relu2_2'] = ReLULayer()
+        layers['pool2'] = MaxPoolingLayer(2, 2)
+
+        layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.001)
+        layers['bn3'] = BatchNormLayer((256, 8, 8))
+        layers['relu3_2'] = ReLULayer()
+        layers['pool3'] = MaxPoolingLayer(2, 2)
+
+        layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
+        layers['fc1'] = FullyConnectedLayer(4096, 1024, 0.001)
+        layers['fc2'] = FullyConnectedLayer(1024, 10, 0.001)
+
+        model = {}
+        model['layer_name'] = param_layer_name
+        model['layers'] = layers
+
+        return model

@@ -53,7 +53,7 @@ class ReLULayer(object):
 
     def forward(self, input, train=True):  # 前向传播的计算
         self.input = input
-        return cp.maximum(input, 0)
+        return cp.maximum(self.input, 0)
 
     def backward(self, top_diff):  # 反向传播的计算
         return cp.where(self.input > 0, top_diff, 0)
@@ -66,19 +66,19 @@ class SoftmaxLossLayer(object):
     def forward(self, input, train=True):  # 前向传播的计算
         input_max = cp.max(input, axis=1, keepdims=True)
         input_exp = cp.exp(cp.subtract(input, input_max))
-        self.prob = cp.divide(input_exp, cp.sum(input_exp, axis=1, keepdims=True))
+        self.prob = input_exp / cp.sum(input_exp, axis=1, keepdims=True)
         return self.prob
 
     def get_loss(self, label):   # 计算损失
         self.batch_size = self.prob.shape[0]
         self.label_onehot = cp.zeros_like(self.prob)
         self.label_onehot[cp.arange(self.batch_size), label] = 1.0
-        loss = cp.divide(-cp.sum(cp.multiply(cp.log(cp.add(self.prob, self.eps)), self.label_onehot)), self.batch_size)
+        loss = -cp.sum(cp.multiply(cp.log(cp.add(self.prob, self.eps)), self.label_onehot)) / self.batch_size
         return loss
 
     def backward(self, top_diff):  # 反向传播的计算
         # top_diff here is useless, because we are starting from here
-        bottom_diff = cp.divide(cp.subtract(self.prob, self.label_onehot), self.batch_size)
+        bottom_diff = (self.prob - self.label_onehot) / self.batch_size
         return bottom_diff
 
 class ConvolutionalLayer(object):
@@ -102,7 +102,6 @@ class ConvolutionalLayer(object):
         width = input.shape[3] + 2 * self.padding
         self.input_pad = cp.zeros([self.input.shape[0], self.input.shape[1], height, width])
         self.input_pad[:, :, self.padding: self.padding + input.shape[2], self.padding: self.padding + input.shape[3]] = self.input
-        # self.input_pad = cp.pad(input, [[0, 0], [0, 0], [self.padding, self.padding], [self.padding, self.padding]], 'constant')
         height_out = int((height - self.kernel_size) / self.stride) + 1
         width_out = int((width - self.kernel_size) / self.stride) + 1
         mat_w = self.kernel_size * self.kernel_size * self.channel_in
@@ -278,10 +277,10 @@ class BatchNormLayer(object):
             self.running_var_x = self.var_x
         else:
             gamma = self.running_avg_gamma
-            self.running_mean_x = cp.add(cp.multiply(gamma, self.running_mean_x), \
-                                  cp.multiply((1.0 - gamma), self.mean_x))
-            self.running_var_x = cp.add(cp.multiply(gamma, self.running_var_x), \
-                                 cp.multiply((1. - gamma), self.var_x))
+            self.running_mean_x = gamma * self.running_mean_x + \
+                                  (1.0 - gamma) * self.mean_x
+            self.running_var_x = gamma * self.running_var_x + \
+                                 (1. - gamma) * self.var_x
 
 
     def forward(self, x: cp.ndarray, train: bool = True) -> cp.ndarray:
@@ -295,11 +294,11 @@ class BatchNormLayer(object):
             self.mean_x = self.running_mean_x.copy()
             self.var_x = self.running_var_x.copy()
 
-        self.var_x = cp.add(self.var_x, 1e-9)
+        self.var_x += 1e-9
         self.stddev_x = cp.sqrt(self.var_x)
-        self.x_minus_mean = cp.subtract(x, self.mean_x)
-        self.standard_x = cp.divide(self.x_minus_mean, self.stddev_x)
-        return cp.add(cp.multiply(self.gamma, self.standard_x), self.bias)
+        self.x_minus_mean = x - self.mean_x
+        self.standard_x = self.x_minus_mean / self.stddev_x
+        return self.gamma * self.standard_x + self.bias
 
     def backward(self, grad_input: cp.ndarray) -> cp.ndarray:
         standard_grad = grad_input * self.gamma
@@ -318,8 +317,8 @@ class BatchNormLayer(object):
                                  keepdims=True)
         self.bias_grad = cp.sum(grad_input, axis=0, keepdims=True)
 
-        return cp.add(cp.add(standard_grad * stddev_inv, var_grad * aux_x_minus_mean), \
-               mean_grad / self.num_examples)
+        return standard_grad * stddev_inv + var_grad * aux_x_minus_mean + \
+               mean_grad / self.num_examples
 
     def update_param(self) -> None:
         if not self.optimizer:
