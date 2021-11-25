@@ -17,7 +17,9 @@ class FullyConnectedLayer(object):
     def init_param(self, lr, optimizer):  # 参数初始化
         self.weight = cp.random.normal(loc=0.0, scale=self.std, size=(self.num_input, self.num_output))
         self.bias = cp.zeros([1, self.num_output])
-        self.lr, self.optimizer = init_optimizer(lr, optimizer)
+        self.lr = lr
+        self.optimizer_w = init_optimizer(lr, optimizer)
+        self.optimizer_b = init_optimizer(lr, optimizer)
 
     def forward(self, input, train=True):  # 前向传播计算
         self.input = input
@@ -31,12 +33,12 @@ class FullyConnectedLayer(object):
         return bottom_diff
 
     def update_param(self):  # 参数更新
-        if not self.optimizer:
+        if not self.optimizer_w:
             self.weight = self.weight - self.lr * self.d_weight
             self.bias = self.bias - self.lr * cp.sum(self.d_bias, axis=1)
         else:
-            self.weight = self.optimizer.update(self.weight, self.d_weight)
-            self.bias = self.optimizer.update(self.bias, cp.sum(self.d_bias, axis=1))
+            self.weight = self.optimizer_w.update(self.weight, self.d_weight)
+            self.bias = self.optimizer_b.update(self.bias, cp.sum(self.d_bias, axis=1))
 
     def load_param(self, weight, bias):  # 参数加载
         assert self.weight.shape == weight.shape, "{} {}".format(self.weight.shape, weight.shape)
@@ -94,7 +96,9 @@ class ConvolutionalLayer(object):
     def init_param(self, lr, optimizer):
         self.weight = cp.random.normal(loc=0.0, scale=self.std, size=(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out))
         self.bias = cp.zeros([self.channel_out])
-        self.lr, self.optimizer = init_optimizer(lr, optimizer)
+        self.lr = lr
+        self.optimizer_w = init_optimizer(lr, optimizer)
+        self.optimizer_b = init_optimizer(lr, optimizer)
 
     def forward(self, input, train=True):
         self.input = input # [N, C, H, W]
@@ -163,12 +167,12 @@ class ConvolutionalLayer(object):
         return self.d_weight, self.d_bias
 
     def update_param(self):
-        if not self.optimizer:
+        if not self.optimizer_w:
             self.weight += - self.lr * self.d_weight
             self.bias += - self.lr * self.d_bias
         else:
-            self.weight = self.optimizer.update(self.weight, self.d_weight)
-            self.bias = self.optimizer.update(self.bias, self.d_bias)
+            self.weight = self.optimizer_w.update(self.weight, self.d_weight)
+            self.bias = self.optimizer_b.update(self.bias, self.d_bias)
 
 
     def load_param(self, weight, bias):
@@ -246,7 +250,10 @@ class BatchNormLayer(object):
         self.dims = dims
 
     def init_param(self, lr, optimizer):
-        self.lr, self.optimizer = init_optimizer(lr, optimizer)
+        self.lr = lr
+        self.optimizer_w = init_optimizer(lr, optimizer)
+        self.optimizer_b = init_optimizer(lr, optimizer)
+
         self.gamma = cp.ones(([1] + list(self.dims)), dtype="float32")
         self.bias = cp.zeros(([1] + list(self.dims)), dtype="float32")
 
@@ -321,9 +328,9 @@ class BatchNormLayer(object):
                mean_grad / self.num_examples
 
     def update_param(self) -> None:
-        if not self.optimizer:
+        if not self.optimizer_w:
             self.gamma -= self.lr * self.gamma_grad
             self.bias -= self.lr * self.bias_grad
         else:
-            self.gamma = self.optimizer.update(self.gamma, self.gamma_grad)
-            self.bias = self.optimizer.update(self.bias, self.bias_grad)
+            self.gamma = self.optimizer_w.update(self.gamma, self.gamma_grad)
+            self.bias = self.optimizer_b.update(self.bias, self.bias_grad)

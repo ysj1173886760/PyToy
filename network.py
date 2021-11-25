@@ -1,13 +1,8 @@
 
 import numpy as np
 import cupy as cp
-import struct
-import os
-import imageio
 import time
 import tqdm
-from data_augumentation import dataAugumentor
-from dataloader import load_data
 
 from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
@@ -15,7 +10,7 @@ TRAIN_STEP = 100
 BATCH_SIZE = 100
 
 class Network(object):
-    def __init__(self, lr = 1, optimizer=False):
+    def __init__(self, lr=1, optimizer=False):
         self.optimizer = optimizer
         self.lr = lr
 

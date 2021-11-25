@@ -1,22 +1,20 @@
 # coding:utf-8
 import numpy as np
 import cupy as cp
-import struct
 import os
 import imageio
 import time
-import tqdm
 from data_augumentation import dataAugumentor
 from dataloader import load_data
 from network import Network, lightWeightNetwork
 
 if __name__ == '__main__':
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.05
     DATA_DIR = './data'
     data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
     test_list = ['test_batch']
 
-    net = Network(LEARNING_RATE, False)
+    net = Network(LEARNING_RATE, 'Adam')
     net.build_model(lightWeightNetwork().get_model())
     net.init_model()
     
