@@ -6,6 +6,7 @@ import os
 import scipy.io
 import time
 import tqdm
+from dataloader import load_data
 
 from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
@@ -89,40 +90,35 @@ class Network(object):
         accuracy = cp.mean(pred_results == label)
         return accuracy
 
-def unpickle(file):
-    import pickle
-    with open(file, 'rb') as fo:
-        dict = pickle.load(fo, encoding='bytes')
-    return dict
 
 if __name__ == '__main__':
     TRAIN_STEP = 100
     LEARNING_RATE = 0.01
     BATCH_SIZE = 100
+    DATA_DIR = './data'
     data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
-    # data_list = ['data_batch_1']
+    test_list = ['test_batch']
 
     net = Network(LEARNING_RATE, "Adam")
     net.build_model()
     net.init_model()
     
-    # load train data
-    for i, pth in enumerate(data_list):
-        data_pth = os.path.join('./data', pth)
-        data = unpickle(data_pth)
-        images = np.transpose(data[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2])
-        labels = np.array(data[b'labels']).reshape(-1)
-        if i == 0:
-            train_data = images
-            train_label = labels
-        else:
-            train_data = np.concatenate((train_data, images))
-            train_label = np.concatenate((train_label, labels))
     
+    # load train data
+    train_data, train_label = load_data(DATA_DIR, data_list)
     # load test data
-    test_data_raw = unpickle(os.path.join('./data', 'test_batch'))
-    test_data = np.transpose(test_data_raw[b'data'].reshape(-1, 32, 32, 3), [0, 3, 1, 2])
-    test_label = np.array(test_data_raw[b'labels']).reshape(-1)
+    test_data, test_label = load_data(DATA_DIR, test_list)
+
+    # preprocess data
+    train_data = train_data / 255
+    test_data = test_data / 255
+    mean = np.mean(train_data, axis=(0, 2, 3))
+    std = np.var(train_data, axis=(0, 2, 3))
+    print("mean ", mean, " std ", std)
+    for i in range(3):
+        train_data[:, i, :, :] = (train_data[:, i, :, :] - mean[i]) / std[i]
+        test_data[:, i, :, :] = (test_data[:, i, :, :] - mean[i]) / std[i]
+
     random_index = np.arange(train_data.shape[0]).astype(int)
     max_batch = train_data.shape[0] // BATCH_SIZE
     last_accuracy = 0.0
