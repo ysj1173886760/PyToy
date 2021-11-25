@@ -19,7 +19,7 @@ class Network(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc1', 'softmax'
+            'flatten', 'fc1', 'fc2', 'softmax'
         ]
 
     def build_model(self):
@@ -28,23 +28,24 @@ class Network(object):
         self.layers = {}
 
         # 32 * 32 * 3
-        self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 32, 1, 1, 0.01)
-        self.layers['bn1'] = BatchNormLayer((32, 32, 32))
+        self.layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.001)
+        self.layers['bn1'] = BatchNormLayer((64, 32, 32))
         self.layers['relu1_2'] = ReLULayer()
         self.layers['pool1'] = MaxPoolingLayer(2, 2)
 
-        self.layers['conv2_1'] = ConvolutionalLayer(3, 32, 32, 1, 1, 0.01)
-        self.layers['bn2'] = BatchNormLayer((32, 16, 16))
+        self.layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.001)
+        self.layers['bn2'] = BatchNormLayer((128, 16, 16))
         self.layers['relu2_2'] = ReLULayer()
         self.layers['pool2'] = MaxPoolingLayer(2, 2)
 
-        self.layers['conv3_1'] = ConvolutionalLayer(3, 32, 64, 1, 1, 0.01)
-        self.layers['bn3'] = BatchNormLayer((64, 8, 8))
+        self.layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.001)
+        self.layers['bn3'] = BatchNormLayer((256, 8, 8))
         self.layers['relu3_2'] = ReLULayer()
         self.layers['pool3'] = MaxPoolingLayer(2, 2)
 
-        self.layers['flatten'] = FlattenLayer((64, 4, 4), (1024, ))
-        self.layers['fc1'] = FullyConnectedLayer(1024, 10, 0.1)
+        self.layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
+        self.layers['fc1'] = FullyConnectedLayer(4096, 1024, 0.001)
+        self.layers['fc2'] = FullyConnectedLayer(1024, 10, 0.001)
 
         self.layers['softmax'] = SoftmaxLossLayer()
 
@@ -111,7 +112,7 @@ if __name__ == '__main__':
     test_data, test_label = load_data(DATA_DIR, test_list)
 
     # preprocess data
-    augumentor = dataAugumentor()
+    augumentor = dataAugumentor(toTensor=True, whiten=True, crop=False, rotate=False, noise=True)
 
     train_data = augumentor.augument(train_data, True)
     test_data = augumentor.augument(test_data, False)

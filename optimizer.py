@@ -10,11 +10,11 @@ class AdamOptimizer(object):
 
     def update(self, input, grad):
         self.step += 1
-        self.mt = self.beta1 * self.mt + (1 - self.beta1) * grad
-        self.vt = self.beta2 * self.vt + (1 - self.beta2) * (grad ** 2)
-        mt_hat = self.mt / (1 - cp.power(self.beta1, self.step))
-        vt_hat = self.vt / (1 - cp.power(self.beta2, self.step))
-        output = input - self.lr * mt_hat / (cp.sqrt(vt_hat) + self.eps)
+        self.mt = cp.add(cp.multiply(self.beta1, self.mt), (1 - self.beta1) * grad)
+        self.vt = cp.add(self.beta2 * self.vt + (1 - self.beta2) * cp.power(grad, 2))
+        mt_hat = cp.divide(self.mt, (1 - cp.power(self.beta1, self.step)))
+        vt_hat = cp.divide(self.vt, (1 - cp.power(self.beta2, self.step)))
+        output = cp.subtract(input, cp.divide(self.lr * mt_hat, (cp.sqrt(vt_hat) + self.eps)))
         return output
 
 def init_optimizer(lr, optimizer):

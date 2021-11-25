@@ -35,14 +35,15 @@ class dataAugumentor():
         
     def augument(self, data, train_data=True):
         if train_data:
+            self.mean, self.std = self.calc_mean_std(data, (0, 2, 3))
+
             if self.toTensor:
                 data = data / 255
-            if self.crop:
-                data = self.img_crop(data)
             if self.rotate:
                 data = self.img_rotate(data)
+            if self.crop:
+                data = self.img_crop(data)
             if self.whiten:
-                self.mean, self.std = self.calc_mean_std(data, (0, 2, 3))
                 data = self.img_whiten(data)
         else:
             if self.toTensor:

@@ -53,12 +53,10 @@ class ReLULayer(object):
 
     def forward(self, input, train=True):  # 前向传播的计算
         self.input = input
-        output = (input > 0) * input
-        return output
+        return cp.maximum(input, 0)
 
     def backward(self, top_diff):  # 反向传播的计算
-        bottom_diff = (self.input > 0) * top_diff
-        return bottom_diff
+        return cp.where(self.input > 0, top_diff, 0)
 
 class SoftmaxLossLayer(object):
     def __init__(self):
@@ -67,20 +65,20 @@ class SoftmaxLossLayer(object):
 
     def forward(self, input, train=True):  # 前向传播的计算
         input_max = cp.max(input, axis=1, keepdims=True)
-        input_exp = cp.exp(input - input_max).astype(cp.float32)
-        self.prob = input_exp / cp.sum(input_exp, axis=1, keepdims=True)
+        input_exp = cp.exp(cp.subtract(input, input_max))
+        self.prob = cp.divide(input_exp, cp.sum(input_exp, axis=1, keepdims=True))
         return self.prob
 
     def get_loss(self, label):   # 计算损失
         self.batch_size = self.prob.shape[0]
         self.label_onehot = cp.zeros_like(self.prob)
         self.label_onehot[cp.arange(self.batch_size), label] = 1.0
-        loss = -cp.sum(cp.log(self.prob + self.eps) * self.label_onehot) / self.batch_size
+        loss = cp.divide(-cp.sum(cp.multiply(cp.log(cp.add(self.prob, self.eps)), self.label_onehot)), self.batch_size)
         return loss
 
     def backward(self, top_diff):  # 反向传播的计算
         # top_diff here is useless, because we are starting from here
-        bottom_diff = (self.prob - self.label_onehot) / self.batch_size
+        bottom_diff = cp.divide(cp.subtract(self.prob, self.label_onehot), self.batch_size)
         return bottom_diff
 
 class ConvolutionalLayer(object):
@@ -104,6 +102,7 @@ class ConvolutionalLayer(object):
         width = input.shape[3] + 2 * self.padding
         self.input_pad = cp.zeros([self.input.shape[0], self.input.shape[1], height, width])
         self.input_pad[:, :, self.padding: self.padding + input.shape[2], self.padding: self.padding + input.shape[3]] = self.input
+        # self.input_pad = cp.pad(input, [[0, 0], [0, 0], [self.padding, self.padding], [self.padding, self.padding]], 'constant')
         height_out = int((height - self.kernel_size) / self.stride) + 1
         width_out = int((width - self.kernel_size) / self.stride) + 1
         mat_w = self.kernel_size * self.kernel_size * self.channel_in
@@ -117,7 +116,7 @@ class ConvolutionalLayer(object):
                 bias_y = y * self.stride
                 self.col[:, cur, :] = self.input_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(input.shape[0], -1)
                 cur = cur + 1
-        output = cp.matmul(self.col, self.weight.reshape(-1, self.weight.shape[-1])) + self.bias
+        output = cp.add(cp.matmul(self.col, self.weight.reshape(-1, self.weight.shape[-1])), self.bias)
         self.output = cp.moveaxis(output.reshape(input.shape[0], height_out, width_out, self.channel_out), 3, 1)
 
         return self.output
@@ -219,7 +218,9 @@ class MaxPoolingLayer(object):
             for y in range(top_diff.shape[3]):
                 bias_x = x * self.stride
                 bias_y = y * self.stride
-                bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] += contrib[:, :, x, y, :].reshape(top_diff.shape[0], top_diff.shape[1], self.kernel_size, self.kernel_size)
+                bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] = \
+                    cp.add(contrib[:, :, x, y, :].reshape(top_diff.shape[0], top_diff.shape[1], self.kernel_size, self.kernel_size), \
+                            bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size])
         return bottom_diff
 
 class FlattenLayer(object):
@@ -277,27 +278,28 @@ class BatchNormLayer(object):
             self.running_var_x = self.var_x
         else:
             gamma = self.running_avg_gamma
-            self.running_mean_x = gamma * self.running_mean_x + \
-                                  (1.0 - gamma) * self.mean_x
-            self.running_var_x = gamma * self.running_var_x + \
-                                 (1. - gamma) * self.var_x
+            self.running_mean_x = cp.add(cp.multiply(gamma, self.running_mean_x), \
+                                  cp.multiply((1.0 - gamma), self.mean_x))
+            self.running_var_x = cp.add(cp.multiply(gamma, self.running_var_x), \
+                                 cp.multiply((1. - gamma), self.var_x))
 
 
     def forward(self, x: cp.ndarray, train: bool = True) -> cp.ndarray:
         self.num_examples = x.shape[0]
         if train:
             self.mean_x = cp.mean(x, axis=0, keepdims=True)
-            self.var_x = cp.mean((x - self.mean_x) ** 2, axis=0, keepdims=True)
+            # self.var_x = cp.mean(cp.power(cp.subtract(x, self.mean_x), 2), axis=0, keepdims=True)
+            self.var_x = cp.var(x, axis=0, keepdims=True)
             self.update_running_variables()
         else:
             self.mean_x = self.running_mean_x.copy()
             self.var_x = self.running_var_x.copy()
 
-        self.var_x += 1e-9
+        self.var_x = cp.add(self.var_x, 1e-9)
         self.stddev_x = cp.sqrt(self.var_x)
-        self.x_minus_mean = x - self.mean_x
-        self.standard_x = self.x_minus_mean / self.stddev_x
-        return self.gamma * self.standard_x + self.bias
+        self.x_minus_mean = cp.subtract(x, self.mean_x)
+        self.standard_x = cp.divide(self.x_minus_mean, self.stddev_x)
+        return cp.add(cp.multiply(self.gamma, self.standard_x), self.bias)
 
     def backward(self, grad_input: cp.ndarray) -> cp.ndarray:
         standard_grad = grad_input * self.gamma
@@ -316,8 +318,8 @@ class BatchNormLayer(object):
                                  keepdims=True)
         self.bias_grad = cp.sum(grad_input, axis=0, keepdims=True)
 
-        return standard_grad * stddev_inv + var_grad * aux_x_minus_mean + \
-               mean_grad / self.num_examples
+        return cp.add(cp.add(standard_grad * stddev_inv, var_grad * aux_x_minus_mean), \
+               mean_grad / self.num_examples)
 
     def update_param(self) -> None:
         if not self.optimizer:
