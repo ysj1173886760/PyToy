@@ -130,30 +130,30 @@ class DeeperNetwork(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc1', 'fc2', 'softmax'
+            'flatten', 'fc1', 'softmax'
         ]
 
         layers = {}
 
-        layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.001)
+        layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.01)
         layers['bn1'] = BatchNormLayer((64, 32, 32))
         layers['relu1_2'] = ReLULayer()
         layers['pool1'] = MaxPoolingLayer(2, 2)
 
-        layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.001)
+        layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.01)
         layers['bn2'] = BatchNormLayer((128, 16, 16))
         layers['relu2_2'] = ReLULayer()
         layers['pool2'] = MaxPoolingLayer(2, 2)
 
-        layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.001)
+        layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.01)
         layers['bn3'] = BatchNormLayer((256, 8, 8))
         layers['relu3_2'] = ReLULayer()
         layers['pool3'] = MaxPoolingLayer(2, 2)
 
         layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
-        layers['fc1'] = FullyConnectedLayer(4096, 1024, 0.001)
-        layers['fc2'] = FullyConnectedLayer(1024, 10, 0.001)
+        layers['fc1'] = FullyConnectedLayer(4096, 10, 0.01)
 
+        layers['softmax'] = SoftmaxLossLayer()
         model = {}
         model['layer_name'] = param_layer_name
         model['layers'] = layers

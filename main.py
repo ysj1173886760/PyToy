@@ -6,7 +6,7 @@ import imageio
 import time
 from data_augumentation import dataAugumentor
 from dataloader import load_data
-from network import Network, lightWeightNetwork
+from network import DeeperNetwork, Network, lightWeightNetwork
 
 if __name__ == '__main__':
     LEARNING_RATE = 0.05
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     test_list = ['test_batch']
 
     net = Network(LEARNING_RATE, 'Adam')
-    net.build_model(lightWeightNetwork().get_model())
+    net.build_model(DeeperNetwork().get_model())
     net.init_model()
     
     # load train data
