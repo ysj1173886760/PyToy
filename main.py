@@ -7,6 +7,7 @@ import time
 from data_augumentation import dataAugumentor
 from dataloader import load_data
 from network import DeeperNetwork, Network, lightWeightNetwork
+import cProfile
 
 if __name__ == '__main__':
     LEARNING_RATE = 0.05

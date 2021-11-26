@@ -1,4 +1,5 @@
 
+import cProfile
 import numpy as np
 import cupy as cp
 import time
@@ -77,10 +78,13 @@ class Network(object):
             for cur in bar:
                 batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
                 batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
+                # cProfile.run("self.forward(batch_image)")
                 prob = self.forward(batch_image)
                 loss = self.layers['softmax'].get_loss(batch_label)
                 total_loss += loss
+                # cProfile.run("self.backward(loss)")
                 self.backward(loss)
+                # cProfile.run("self.update()")
                 self.update()
                 bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy))
                 # print("batch time %f" % (end_time - start_time))
@@ -130,28 +134,30 @@ class DeeperNetwork(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc1', 'softmax'
+            'flatten', 'fc4_1', 'relu4_2', 'fc4_3', 'softmax'
         ]
 
         layers = {}
 
-        layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.01)
+        layers['conv1_1'] = ConvolutionalLayer(3, 3, 64, 1, 1, 0.001)
         layers['bn1'] = BatchNormLayer((64, 32, 32))
         layers['relu1_2'] = ReLULayer()
         layers['pool1'] = MaxPoolingLayer(2, 2)
 
-        layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.01)
+        layers['conv2_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.001)
         layers['bn2'] = BatchNormLayer((128, 16, 16))
         layers['relu2_2'] = ReLULayer()
         layers['pool2'] = MaxPoolingLayer(2, 2)
 
-        layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.01)
+        layers['conv3_1'] = ConvolutionalLayer(3, 128, 256, 1, 1, 0.001)
         layers['bn3'] = BatchNormLayer((256, 8, 8))
         layers['relu3_2'] = ReLULayer()
         layers['pool3'] = MaxPoolingLayer(2, 2)
 
         layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
-        layers['fc1'] = FullyConnectedLayer(4096, 10, 0.01)
+        layers['fc4_1'] = FullyConnectedLayer(4096, 1024, 0.001)
+        layers['relu4_2'] = ReLULayer()
+        layers['fc4_3'] = FullyConnectedLayer(1024, 10, 0.001)
 
         layers['softmax'] = SoftmaxLossLayer()
         model = {}
