@@ -6,6 +6,7 @@ import struct
 import os
 import time
 from optimizer import AdamOptimizer, init_optimizer
+from numba import njit, jit
 
 class FullyConnectedLayer(object):
     def __init__(self, num_input, num_output, std=0.01):  # 全连接层初始化
@@ -21,24 +22,24 @@ class FullyConnectedLayer(object):
         self.optimizer_w = init_optimizer(lr, optimizer)
         self.optimizer_b = init_optimizer(lr, optimizer)
 
-    def forward(self, input, train=True):  # 前向传播计算
-        self.input = input
-        output = cp.matmul(input, self.weight) + self.bias
+    def forward(self, input: cp.array, train:bool=True) -> cp.array:  # 前向传播计算
+        self.input: cp.array = input
+        output: cp.array = cp.add(cp.matmul(input, self.weight), self.bias)
         return output
 
-    def backward(self, top_diff):  # 反向传播的计算
-        self.d_weight = cp.matmul(self.input.T, top_diff)
-        self.d_bias = top_diff.T
-        bottom_diff = cp.matmul(top_diff, self.weight.T)
+    def backward(self, top_diff: cp.array) -> cp.array:  # 反向传播的计算
+        self.d_weight: cp.array = cp.matmul(self.input.T, top_diff)
+        self.d_bias: cp.array = top_diff.T
+        bottom_diff: cp.array = cp.matmul(top_diff, self.weight.T)
         return bottom_diff
 
-    def update_param(self):  # 参数更新
+    def update_param(self) -> None:  # 参数更新
         if not self.optimizer_w:
-            self.weight = self.weight - self.lr * self.d_weight
-            self.bias = self.bias - self.lr * cp.sum(self.d_bias, axis=1)
+            self.weight: cp.array = self.weight - self.lr * self.d_weight
+            self.bias: cp.array = self.bias - self.lr * cp.sum(self.d_bias, axis=1)
         else:
-            self.weight = self.optimizer_w.update(self.weight, self.d_weight)
-            self.bias = self.optimizer_b.update(self.bias, cp.sum(self.d_bias, axis=1))
+            self.weight: cp.array = self.optimizer_w.update(self.weight, self.d_weight)
+            self.bias: cp.array = self.optimizer_b.update(self.bias, cp.sum(self.d_bias, axis=1))
 
     def load_param(self, weight, bias):  # 参数加载
         assert self.weight.shape == weight.shape, "{} {}".format(self.weight.shape, weight.shape)
@@ -336,3 +337,21 @@ class BatchNormLayer(object):
         else:
             self.gamma = self.optimizer_w.update(self.gamma, self.gamma_grad)
             self.bias = self.optimizer_b.update(self.bias, self.bias_grad)
+
+class DropOut(object):
+    def __init__(self, prob) -> None:
+        self.prob = prob
+    
+    def forward(self, input, train=True):
+        if train:
+            rand = cp.random.uniform(size=(input.shape))
+            self.activated = rand < self.prob
+            input[self.activated] = 0
+            return input
+        else:
+            return input
+
+    def backward(self, top_diff):
+        top_diff[self.activated] = 0
+        return top_diff
+    

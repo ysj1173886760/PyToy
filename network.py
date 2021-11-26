@@ -5,7 +5,7 @@ import cupy as cp
 import time
 import tqdm
 
-from operators import BatchNormLayer, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
+from operators import BatchNormLayer, DropOut, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
 TRAIN_STEP = 100
 BATCH_SIZE = 100
@@ -134,7 +134,7 @@ class DeeperNetwork(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc4_1', 'relu4_2', 'fc4_3', 'softmax'
+            'flatten', 'fc4_1', 'relu4_2', 'dropout', 'fc4_3', 'softmax'
         ]
 
         layers = {}
@@ -157,6 +157,7 @@ class DeeperNetwork(object):
         layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
         layers['fc4_1'] = FullyConnectedLayer(4096, 1024, 0.001)
         layers['relu4_2'] = ReLULayer()
+        layers['dropout'] = DropOut(0.4)
         layers['fc4_3'] = FullyConnectedLayer(1024, 10, 0.001)
 
         layers['softmax'] = SoftmaxLossLayer()
