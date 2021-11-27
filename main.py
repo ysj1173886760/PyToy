@@ -16,7 +16,7 @@ if __name__ == '__main__':
     test_list = ['test_batch']
 
     net = Network(LEARNING_RATE, 'Adam')
-    net.build_model(lightWeightNetwork().get_model())
+    net.build_model(DeeperNetwork().get_model())
     net.init_model()
     
     # load train data
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     test_data, test_label = load_data(DATA_DIR, test_list)
 
     # preprocess data
-    augumentor = dataAugumentor(toTensor=True, whiten=True, crop=False, rotate=False, noise=True)
+    augumentor = dataAugumentor(toTensor=True, whiten=True, crop=True, rotate=False, flip=True, noise=True)
 
     train_data = augumentor.augument(train_data, True)
     test_data = augumentor.augument(test_data, False)

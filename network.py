@@ -82,6 +82,7 @@ class Network(object):
         random_index = np.arange(train_data.shape[0]).astype(int)
         max_batch = train_data.shape[0] // BATCH_SIZE
         last_accuracy = 0.0
+        train_accuracy = 0.0
 
         # tqdm stuff
         for epoch in range(TRAIN_STEP):
@@ -101,10 +102,12 @@ class Network(object):
                 self.backward(loss)
                 # cProfile.run("self.update()")
                 self.update()
-                bar.set_description("Epoch %d Loss %.6f Accuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy))
+                bar.set_description("Epoch %d Loss %.6f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy, train_accuracy))
                 # print("batch time %f" % (end_time - start_time))
                 
             last_accuracy = self.evaluate(test_data, test_label)
+            train_accuracy = self.evaluate(train_data[0: 10000], train_label[0: 10000])
+
             if (epoch + 1) % SAVE_EPOCH == 0:
                 self.save_model(os.path.join(MODEL_DIR, 'model{}.npy'.format(epoch)))
 
@@ -151,7 +154,7 @@ class DeeperNetwork(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc4_1', 'relu4_2', 'dropout', 'fc4_3', 'softmax'
+            'flatten', 'fc4_1', 'relu4_2', 'fc4_3', 'softmax'
         ]
 
         layers = {}
@@ -174,7 +177,7 @@ class DeeperNetwork(object):
         layers['flatten'] = FlattenLayer((256, 4, 4), (4096, ))
         layers['fc4_1'] = FullyConnectedLayer(4096, 1024, 0.001)
         layers['relu4_2'] = ReLULayer()
-        layers['dropout'] = DropOut(0.4)
+        # layers['dropout'] = DropOut(0.4)
         layers['fc4_3'] = FullyConnectedLayer(1024, 10, 0.001)
 
         layers['softmax'] = SoftmaxLossLayer()
