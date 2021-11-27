@@ -16,7 +16,7 @@ if __name__ == '__main__':
     test_list = ['test_batch']
 
     net = Network(LEARNING_RATE, 'Adam')
-    net.build_model(DeeperNetwork().get_model())
+    net.build_model(lightWeightNetwork().get_model())
     net.init_model()
     
     # load train data

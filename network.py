@@ -4,11 +4,14 @@ import numpy as np
 import cupy as cp
 import time
 import tqdm
+import os
 
 from operators import BatchNormLayer, DropOut, FullyConnectedLayer, ReLULayer, SoftmaxLossLayer, ConvolutionalLayer, MaxPoolingLayer, FlattenLayer
 
 TRAIN_STEP = 100
 BATCH_SIZE = 100
+SAVE_EPOCH = 1
+MODEL_DIR = './models'
 
 class Network(object):
     def __init__(self, lr=1, optimizer=False):
@@ -63,6 +66,18 @@ class Network(object):
         accuracy = cp.mean(pred_results == label)
         return accuracy
     
+    def save_model(self, param_dir):
+        params = {}
+        for layer_name in self.update_layer_list:
+            params[layer_name] = self.layers[layer_name].get_param()
+        np.save(param_dir, params)
+    
+    def load_model(self, param_dir):
+        params = np.load(param_dir, allow_pickle=True).item()
+        for layer_name in self.update_layer_list:
+            self.layers[layer_name].load_param(params[layer_name])
+        print("Loading Model Complete")
+    
     def train(self, train_data, train_label, test_data, test_label):
         random_index = np.arange(train_data.shape[0]).astype(int)
         max_batch = train_data.shape[0] // BATCH_SIZE
@@ -90,6 +105,8 @@ class Network(object):
                 # print("batch time %f" % (end_time - start_time))
                 
             last_accuracy = self.evaluate(test_data, test_label)
+            if (epoch + 1) % SAVE_EPOCH == 0:
+                self.save_model(os.path.join(MODEL_DIR, 'model{}.npy'.format(epoch)))
 
 class lightWeightNetwork(object):
     def get_model(self):

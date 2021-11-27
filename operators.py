@@ -41,13 +41,14 @@ class FullyConnectedLayer(object):
             self.weight: cp.array = self.optimizer_w.update(self.weight, self.d_weight)
             self.bias: cp.array = self.optimizer_b.update(self.bias, cp.sum(self.d_bias, axis=1))
 
-    def load_param(self, weight, bias):  # 参数加载
+    def load_param(self, param):  # 参数加载
+        weight, bias = param
         assert self.weight.shape == weight.shape, "{} {}".format(self.weight.shape, weight.shape)
         assert self.bias.shape == bias.shape
         self.weight = weight
         self.bias = bias
 
-    def save_param(self):  # 参数保存
+    def get_param(self):  # 参数保存
         return self.weight, self.bias
 
 class ReLULayer(object):
@@ -176,12 +177,15 @@ class ConvolutionalLayer(object):
             self.weight = self.optimizer_w.update(self.weight, self.d_weight)
             self.bias = self.optimizer_b.update(self.bias, self.d_bias)
 
-
-    def load_param(self, weight, bias):
+    def load_param(self, param):
+        weight, bias = param
         assert self.weight.shape == weight.shape
         assert self.bias.shape == bias.shape
         self.weight = weight
         self.bias = bias
+
+    def get_param(self):  # 参数保存
+        return self.weight, self.bias
 
 class MaxPoolingLayer(object):
     def __init__(self, kernel_size, stride):
@@ -338,20 +342,29 @@ class BatchNormLayer(object):
             self.gamma = self.optimizer_w.update(self.gamma, self.gamma_grad)
             self.bias = self.optimizer_b.update(self.bias, self.bias_grad)
 
+    def get_param(self):  # 参数保存
+        return self.gamma, self.bias, self.running_mean_x, self.running_var_x, self.initialized
+
+    def load_param(self, param):
+        gamma, bias, running_mean_x, running_var_x, initialized = param
+        self.gamma = gamma
+        self.bias = bias
+        self.running_mean_x = running_mean_x
+        self.running_var_x = running_var_x
+        self.initialized = initialized
+
 class DropOut(object):
-    def __init__(self, prob) -> None:
-        self.prob = prob
+    def __init__(self, drop_prob) -> None:
+        assert 0 < drop_prob < 1
+        self.keep_prob = 1 - drop_prob
     
     def forward(self, input, train=True):
         if train:
-            rand = cp.random.uniform(size=(input.shape))
-            self.activated = rand < self.prob
-            input[self.activated] = 0
-            return input
+            self.activated = cp.random.uniform(size=(input.shape)) < self.keep_prob
+            return cp.multiply(self.activated, input) / self.keep_prob
         else:
             return input
 
     def backward(self, top_diff):
-        top_diff[self.activated] = 0
-        return top_diff
+        return cp.multiply(top_diff, self.activated) / self.keep_prob
     
