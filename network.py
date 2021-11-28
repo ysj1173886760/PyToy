@@ -58,13 +58,15 @@ class Network(object):
         test = cp.array(test_data)
         label = cp.array(test_label)
         pred_results = cp.zeros([test.shape[0]])
+        total_loss = 0
         for idx in range(int(test.shape[0] / BATCH_SIZE)):
             batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE]
             prob = self.forward(batch_images, False)
+            total_loss += self.layers['softmax'].get_loss(label[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE])
             pred_labels = cp.argmax(prob, axis=1)
             pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
         accuracy = cp.mean(pred_results == label)
-        return accuracy
+        return accuracy, total_loss
     
     def save_model(self, param_dir):
         params = {}
@@ -83,6 +85,7 @@ class Network(object):
         max_batch = train_data.shape[0] // BATCH_SIZE
         last_accuracy = 0.0
         train_accuracy = 0.0
+        validation_loss = 0.0
 
         # tqdm stuff
         for epoch in range(TRAIN_STEP):
@@ -102,11 +105,11 @@ class Network(object):
                 self.backward(loss)
                 # cProfile.run("self.update()")
                 self.update()
-                bar.set_description("Epoch %d Loss %.6f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), last_accuracy, train_accuracy))
+                bar.set_description("Epoch %d Loss %.6f ValidationLoss %.3f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), validation_loss, last_accuracy, train_accuracy))
                 # print("batch time %f" % (end_time - start_time))
                 
-            last_accuracy = self.evaluate(test_data, test_label)
-            train_accuracy = self.evaluate(train_data[0: 10000], train_label[0: 10000])
+            last_accuracy, validation_loss = self.evaluate(test_data, test_label)
+            train_accuracy, _ = self.evaluate(train_data[0: 10000], train_label[0: 10000])
 
             if (epoch + 1) % SAVE_EPOCH == 0:
                 self.save_model(os.path.join(MODEL_DIR, 'model{}.npy'.format(epoch)))
@@ -180,6 +183,58 @@ class DeeperNetwork(object):
         # layers['dropout'] = DropOut(0.4)
         layers['bn4'] = BatchNormLayer((1024, ))
         layers['fc4_3'] = FullyConnectedLayer(1024, 10, 0.001)
+
+        layers['softmax'] = SoftmaxLossLayer()
+        model = {}
+        model['layer_name'] = param_layer_name
+        model['layers'] = layers
+
+        return model
+
+class testNetwork(object):
+    def get_model(self):
+        param_layer_name = [
+            'conv1_1', 'relu1_2', 'bn1_3', 'conv1_4', 'relu1_5', 'bn1_6', 'pool1_7', 'dropout1_8',
+            'conv2_1', 'relu2_2', 'bn2_3', 'conv2_4', 'relu2_5', 'bn2_6', 'pool2_7', 'dropout2_8',
+            'conv3_1', 'relu3_2', 'bn3_3', 'conv3_4', 'relu3_5', 'bn3_6', 'pool3_7', 'dropout3_8',
+            'flatten', 'fc4_1', 'relu4_2', 'bn4_3', 'dropout4_4', 'fc4_5', 'softmax'
+        ]
+
+        layers = {}
+
+        layers['conv1_1'] = ConvolutionalLayer(3, 3, 32, 1, 1, 0.001)
+        layers['relu1_2'] = ReLULayer()
+        layers['bn1_3'] = BatchNormLayer((32, 32, 32))
+        layers['conv1_4'] = ConvolutionalLayer(3, 32, 32, 1, 1, 0.001)
+        layers['relu1_5'] = ReLULayer()
+        layers['bn1_6'] = BatchNormLayer((32, 32, 32))
+        layers['pool1_7'] = MaxPoolingLayer(2, 2)
+        layers['dropout1_8'] = DropOut(0.3)
+
+        layers['conv2_1'] = ConvolutionalLayer(3, 32, 64, 1, 1, 0.001)
+        layers['relu2_2'] = ReLULayer()
+        layers['bn2_3'] = BatchNormLayer((64, 16, 16))
+        layers['conv2_4'] = ConvolutionalLayer(3, 64, 64, 1, 1, 0.001)
+        layers['relu2_5'] = ReLULayer()
+        layers['bn2_6'] = BatchNormLayer((64, 16, 16))
+        layers['pool2_7'] = MaxPoolingLayer(2, 2)
+        layers['dropout2_8'] = DropOut(0.5)
+
+        layers['conv3_1'] = ConvolutionalLayer(3, 64, 128, 1, 1, 0.001)
+        layers['relu3_2'] = ReLULayer()
+        layers['bn3_3'] = BatchNormLayer((128, 8, 8))
+        layers['conv3_4'] = ConvolutionalLayer(3, 128, 128, 1, 1, 0.001)
+        layers['relu3_5'] = ReLULayer()
+        layers['bn3_6'] = BatchNormLayer((128, 8, 8))
+        layers['pool3_7'] = MaxPoolingLayer(2, 2)
+        layers['dropout3_8'] = DropOut(0.5)
+
+        layers['flatten'] = FlattenLayer((128, 4, 4), (2048, ))
+        layers['fc4_1'] = FullyConnectedLayer(2048, 128, 0.001)
+        layers['relu4_2'] = ReLULayer()
+        layers['bn4_3'] = BatchNormLayer((128, ))
+        layers['dropout4_4'] = DropOut(0.5)
+        layers['fc4_5'] = FullyConnectedLayer(128, 10, 0.001)
 
         layers['softmax'] = SoftmaxLossLayer()
         model = {}

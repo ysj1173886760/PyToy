@@ -46,7 +46,7 @@ class dataAugumentor():
     def augument(self, data, train_data=True):
         if train_data:
             if self.toTensor:
-                data = data / 255
+                data = np.array(data / 255, dtype=np.float32)
                 self.mean, self.std = self.calc_mean_std(data, (0, 2, 3))
             if self.rotate:
                 data = self.img_rotate(data)
@@ -58,7 +58,7 @@ class dataAugumentor():
                 data = self.img_whiten(data)
         else:
             if self.toTensor:
-                data = data / 255
+                data = np.array(data / 255, dtype=np.float32)
             if self.whiten:
                 data = self.img_whiten(data)
 
