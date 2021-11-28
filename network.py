@@ -154,7 +154,7 @@ class DeeperNetwork(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc4_1', 'relu4_2', 'fc4_3', 'softmax'
+            'flatten', 'fc4_1', 'relu4_2', 'fc4_3', 'bn4', 'softmax'
         ]
 
         layers = {}
@@ -178,6 +178,7 @@ class DeeperNetwork(object):
         layers['fc4_1'] = FullyConnectedLayer(4096, 1024, 0.001)
         layers['relu4_2'] = ReLULayer()
         # layers['dropout'] = DropOut(0.4)
+        layers['bn4'] = BatchNormLayer((1024, ))
         layers['fc4_3'] = FullyConnectedLayer(1024, 10, 0.001)
 
         layers['softmax'] = SoftmaxLossLayer()

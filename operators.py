@@ -107,12 +107,13 @@ class ConvolutionalLayer(object):
         self.input_shape = input.shape
         height = input.shape[2] + 2 * self.padding
         width = input.shape[3] + 2 * self.padding
-        self.input_pad = cp.zeros([input.shape[0], input.shape[1], height, width])
-        self.input_pad[:, :, self.padding: self.padding + input.shape[2], self.padding: self.padding + input.shape[3]] = input
+        # self.input_pad = cp.zeros([input.shape[0], input.shape[1], height, width])
+        # self.input_pad[:, :, self.padding: self.padding + input.shape[2], self.padding: self.padding + input.shape[3]] = input
         height_out = int((height - self.kernel_size) / self.stride) + 1
         width_out = int((width - self.kernel_size) / self.stride) + 1
         mat_w = self.kernel_size * self.kernel_size * self.channel_in
         mat_h = height_out * width_out
+        self.input_pad = cp.pad(input, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant')
 
         self.col = cp.empty((input.shape[0], mat_h, mat_w))
         cur = 0
@@ -130,8 +131,8 @@ class ConvolutionalLayer(object):
     def backward(self, top_diff):
         # top_diff batch, cout, h, w
 
-        height_out = int((self.input_shape[2] + 2 * self.padding - self.kernel_size) / self.stride) + 1
-        width_out = int((self.input_shape[3] + 2 * self.padding - self.kernel_size) / self.stride) + 1
+        # height_out = int((self.input_shape[2] + 2 * self.padding - self.kernel_size) / self.stride) + 1
+        # width_out = int((self.input_shape[3] + 2 * self.padding - self.kernel_size) / self.stride) + 1
 
         # cout, batch, h, w
         top_diff_col = cp.transpose(top_diff, [1, 0, 2, 3]).reshape(top_diff.shape[1], -1)
@@ -143,10 +144,14 @@ class ConvolutionalLayer(object):
         self.d_bias = top_diff_col.sum(axis=1)
         
         backward_col = cp.empty((top_diff.shape[0], self.input_shape[2] * self.input_shape[3], self.kernel_size * self.kernel_size * self.channel_out))
-        pad_height = int(((self.input_shape[2] - 1) * self.stride + self.kernel_size - height_out) / 2)
-        pad_width = int(((self.input_shape[3] - 1) * self.stride + self.kernel_size - width_out) / 2)
-        top_diff_pad = cp.zeros((top_diff.shape[0], top_diff.shape[1], height_out + 2 * pad_height, width_out + 2 * pad_width))
-        top_diff_pad[:, :, pad_height: height_out + pad_height, pad_width: width_out + pad_width] = top_diff
+        # pad_height = int(((self.input_shape[2] - 1) * self.stride + self.kernel_size - height_out) / 2)
+        # pad_width = int(((self.input_shape[3] - 1) * self.stride + self.kernel_size - width_out) / 2)
+        # top_diff_pad = cp.zeros((top_diff.shape[0], top_diff.shape[1], height_out + 2 * pad_height, width_out + 2 * pad_width))
+        # top_diff_pad[:, :, pad_height: height_out + pad_height, pad_width: width_out + pad_width] = top_diff
+        pad_height = (self.input_shape[2] - top_diff.shape[2]) // 2
+        pad_width = (self.input_shape[3] - top_diff.shape[3]) // 2
+        top_diff_pad = cp.pad(top_diff, ((0, 0), (0, 0), (pad_height, pad_height), (pad_width, pad_width)), 'constant')
+
         cur = 0
         for x in range(self.input_shape[2]):
             for y in range(self.input_shape[3]):
