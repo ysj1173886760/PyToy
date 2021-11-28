@@ -131,8 +131,8 @@ class ConvolutionalLayer(object):
     def backward(self, top_diff):
         # top_diff batch, cout, h, w
 
-        # height_out = int((self.input_shape[2] + 2 * self.padding - self.kernel_size) / self.stride) + 1
-        # width_out = int((self.input_shape[3] + 2 * self.padding - self.kernel_size) / self.stride) + 1
+        height_out = int((self.input_shape[2] + 2 * self.padding - self.kernel_size) / self.stride) + 1
+        width_out = int((self.input_shape[3] + 2 * self.padding - self.kernel_size) / self.stride) + 1
 
         # cout, batch, h, w
         top_diff_col = cp.transpose(top_diff, [1, 0, 2, 3]).reshape(top_diff.shape[1], -1)
@@ -144,12 +144,12 @@ class ConvolutionalLayer(object):
         self.d_bias = top_diff_col.sum(axis=1)
         
         backward_col = cp.empty((top_diff.shape[0], self.input_shape[2] * self.input_shape[3], self.kernel_size * self.kernel_size * self.channel_out))
-        # pad_height = int(((self.input_shape[2] - 1) * self.stride + self.kernel_size - height_out) / 2)
-        # pad_width = int(((self.input_shape[3] - 1) * self.stride + self.kernel_size - width_out) / 2)
+        pad_height = int(((self.input_shape[2] - 1) * self.stride + self.kernel_size - height_out) / 2)
+        pad_width = int(((self.input_shape[3] - 1) * self.stride + self.kernel_size - width_out) / 2)
         # top_diff_pad = cp.zeros((top_diff.shape[0], top_diff.shape[1], height_out + 2 * pad_height, width_out + 2 * pad_width))
         # top_diff_pad[:, :, pad_height: height_out + pad_height, pad_width: width_out + pad_width] = top_diff
-        pad_height = (self.input_shape[2] - top_diff.shape[2]) // 2
-        pad_width = (self.input_shape[3] - top_diff.shape[3]) // 2
+        # pad_height = (self.input_shape[2] - top_diff.shape[2]) // 2
+        # pad_width = (self.input_shape[3] - top_diff.shape[3]) // 2
         top_diff_pad = cp.pad(top_diff, ((0, 0), (0, 0), (pad_height, pad_height), (pad_width, pad_width)), 'constant')
 
         cur = 0

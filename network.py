@@ -154,7 +154,7 @@ class DeeperNetwork(object):
             'conv1_1', 'bn1', 'relu1_2', 'pool1',  
             'conv2_1', 'bn2', 'relu2_2', 'pool2', 
             'conv3_1', 'bn3', 'relu3_2', 'pool3', 
-            'flatten', 'fc4_1', 'relu4_2', 'fc4_3', 'bn4', 'softmax'
+            'flatten', 'fc4_1', 'relu4_2', 'bn4', 'fc4_3', 'softmax'
         ]
 
         layers = {}
