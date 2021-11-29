@@ -19,8 +19,14 @@ class Graph:
     # clear all the graident which computed in this pass
     def clear_graident(self):
         for node in self.nodes:
-            # TODO: do some real stuff
-            pass
+            node.clear_graident()
+    
+    def reset_value(self):
+        for node in self.nodes:
+            node.reset_value(False)
+        
+    def node_count(self):
+        return len(self.nodes)
     
     
 default_graph = Graph()

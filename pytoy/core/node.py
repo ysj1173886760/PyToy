@@ -9,18 +9,18 @@
 '''
 
 import abc
-import cupy as cp
+import numpy as cp
 
-from graph import Graph, default_graph
+from .graph import Graph, default_graph
 
 class Node(object):
     
     def __init__(self, *parents, **kargs) -> None:
         # basic attribute
         self.kargs = kargs
-        self.graph = kargs.get('graph', default=default_graph)
+        self.graph = kargs.get('graph', default_graph)
         self.need_save = kargs.get('need_save', True)
-        self.name = self.gen_node_name(kargs)
+        self.gen_node_name(**kargs)
 
         # init graph
         self.parents = list(parents)
@@ -61,11 +61,16 @@ class Node(object):
         # overwrite this method
         pass
     
-    def backward(self):
+    def backward(self, target):
+        if self is target:
+            return
+
         if self.graident is None:
             self.graident = cp.zeros_like(self.value)
             for node in self.children:
                 if node.value is not None:
+                    if node.graident is None:
+                        node.backward(target)
                     self.graident += node.get_graident(self)
 
         return self.graident
@@ -87,19 +92,19 @@ class Node(object):
     
 class Variable(Node):
     
-    def __init__(self, dim, init=False, trainable=False, *parents, **kargs) -> None:
-        super().__init__(self, **kargs)
-        self.dim = dim
+    def __init__(self, dims, init=False, trainable=False, **kargs) -> None:
+        Node.__init__(self, **kargs)
+        self.dims = dims
         self.trainable = trainable
 
         # init value
         if init:
             mean = kargs.get('mean', 0.0)
             std = kargs.get('std', 0.001)
-            self.value = cp.random.normal(loc=mean, scale=std, size=dim)
+            self.value = cp.random.normal(loc=mean, scale=std, size=dims)
     
     def set_value(self, value):
-        assert value.shape == self.dim
+        assert value.shape == self.dims
 
         # or maybe reset value explicitly is better?
         self.reset_value(True)
