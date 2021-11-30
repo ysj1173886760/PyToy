@@ -71,3 +71,21 @@
 现在基本可以确定网络浅层的网络训练的效果上限大概在60左右
 
 下面试一试稍微复杂一些的网络
+
+0.0.9
+
+修改了网络模型
+
+貌似过拟合了
+
+![20211128221427](https://picsheep.oss-cn-beijing.aliyuncs.com/pic/20211128221427.png)
+
+0.0.10
+
+![20211128230421](https://picsheep.oss-cn-beijing.aliyuncs.com/pic/20211128230421.png)
+
+减少了学习率，收敛速度变慢
+
+![20211129224401](https://picsheep.oss-cn-beijing.aliyuncs.com/pic/20211129224401.png)
+
+最终大概是0.83左右的测试集正确率
