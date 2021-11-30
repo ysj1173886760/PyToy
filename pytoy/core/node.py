@@ -105,6 +105,7 @@ class Variable(Node):
             else:
                 mean = kargs.get('mean', 0.0)
                 std = kargs.get('std', 0.001)
+                print(self.name, mean, std)
                 self.value = cp.random.normal(loc=mean, scale=std, size=dims)
     
     def set_value(self, value):

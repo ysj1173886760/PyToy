@@ -45,7 +45,7 @@ class Graph:
             G.add_node(node)
             labels[node] = node.__class__.__name__ + ("({:s})".format(str(node.dims)) if hasattr(node, "dims") else "") \
                 + ("\n[{:.3f}]".format(np.linalg.norm(node.graident))
-                   if node.graident is not None else "")
+                   if node.graident is not None else "") + ("\n{}".format(node.name))
             for c in node.get_children():
                 if {node, c} not in already:
                     G.add_edge(node, c)

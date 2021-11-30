@@ -16,3 +16,13 @@ def get_trainable_variables_from_graph(node_name=None, name_scope=None, graph=No
         graph = default_graph
     if node_name is None:
         return [node for node in default_graph.nodes if isinstance(node, Variable) and node.trainable]
+
+def get_node_from_graph(node_name, name_scope=None, graph=None):
+    if graph is None:
+        graph = default_graph
+    if name_scope:
+        node_name = name_scope + '/' + node_name
+    for node in graph.nodes:
+        if node.name == node_name:
+            return node
+    return None
