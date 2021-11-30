@@ -74,8 +74,6 @@ class Node(object):
                     if node.graident is None:
                         node.backward(target)
                     self.graident += node.get_graident(self)
-
-        return self.graident
     
     def clear_graident(self):
         self.graident = None
@@ -110,7 +108,7 @@ class Variable(Node):
                 self.value = cp.random.normal(loc=mean, scale=std, size=dims)
     
     def set_value(self, value):
-        assert value.shape == self.dims
+        assert value.shape == self.dims, '{} {} {}'.format(self.name, value.shape, self.dims)
 
         # or maybe reset value explicitly is better?
         self.reset_value(True)

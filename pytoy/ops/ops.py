@@ -103,6 +103,12 @@ class ReLU(Operator):
 class Conv(Operator):
     # assume parent[0] is input, parent[1] is kernel
     # request input dims like [N, C, H, W]
+    """[Conv]
+    first input is feature, second input is kernel
+
+    Args:
+        Operator ([type]): [description]
+    """
     
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)

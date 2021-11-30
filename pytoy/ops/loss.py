@@ -34,6 +34,14 @@ class L2Loss(LossFunction):
 class CrossEntropyWithSoftMax(LossFunction):
     # assume the param matrixes are [batch, features]
     # parent[0] is input, parent[1] is label
+    """[loss]
+    first input is prob, second input is label, 
+    input dims are [batch_size, features], 
+    label dims are [batch_size]
+
+    Args:
+        LossFunction ([type]): [description]
+    """
     def __init__(self, *parents, **kargs) -> None:
         LossFunction.__init__(self, *parents, **kargs)
         self.batch_size = parents[0].dims[0]

@@ -11,7 +11,7 @@
 from ..core import *
 from ..ops import *
 
-def Dense(input, feature_in, feature_out):
+def Dense(input, feature_in, feature_out, **kargs):
     """[Fully Connected Layer]
 
     Args:
@@ -20,6 +20,7 @@ def Dense(input, feature_in, feature_out):
         feature_out ([int]): [feature out]
     """
 
-    weight = Variable((feature_in, feature_out), init=True, trainable=True)
+    std = kargs.get('std', 0.001)
+    weight = Variable((feature_in, feature_out), init=True, trainable=True, std=std)
     bias = Variable((1, feature_out), init=True, trainable=True, bias=True)
     return Add(MatMul(input, weight), bias)

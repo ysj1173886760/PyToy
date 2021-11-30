@@ -11,3 +11,4 @@
 from .pytoy import *
 from .core import *
 from .ops import *
+from .layer import *
