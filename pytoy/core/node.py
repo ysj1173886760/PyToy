@@ -33,6 +33,8 @@ class Node(object):
         for parent in self.parents:
             parent.children.append(self)
 
+        self.graph.add_node(self)
+
     
     def gen_node_name(self, **kargs):
         self.name = kargs.get('name', '{}:{}'.format(self.__class__.__name__, self.graph.node_count()))
@@ -99,9 +101,13 @@ class Variable(Node):
 
         # init value
         if init:
-            mean = kargs.get('mean', 0.0)
-            std = kargs.get('std', 0.001)
-            self.value = cp.random.normal(loc=mean, scale=std, size=dims)
+            is_bias = kargs.get('bias', False)
+            if is_bias:
+                self.value = cp.zeros(dims)
+            else:
+                mean = kargs.get('mean', 0.0)
+                std = kargs.get('std', 0.001)
+                self.value = cp.random.normal(loc=mean, scale=std, size=dims)
     
     def set_value(self, value):
         assert value.shape == self.dims
