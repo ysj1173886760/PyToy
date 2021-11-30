@@ -37,7 +37,11 @@ class Node(object):
 
     
     def gen_node_name(self, **kargs):
-        self.name = kargs.get('name', '{}:{}'.format(self.__class__.__name__, self.graph.node_count()))
+        prefix = kargs.get('prefix', "")
+        if prefix:
+            self.name = kargs.get('name', '{}/{}:{}'.format(prefix, self.__class__.__name__, self.graph.node_count()))
+        else:
+            self.name = kargs.get('name', '{}:{}'.format(self.__class__.__name__, self.graph.node_count()))
         # TODO: support name scope
     
     def get_parents(self):

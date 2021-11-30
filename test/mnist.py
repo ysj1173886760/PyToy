@@ -14,7 +14,6 @@ import os
 import time
 import pytoy as pt
 from pytoy.ops.ops import SoftMax
-from layers_1 import FullyConnectedLayer, SoftmaxLossLayer, ReLULayer
 
 MNIST_DIR = "./mnist_data"
 TRAIN_DATA = "train-images-idx3-ubyte"
@@ -73,13 +72,13 @@ class MNIST_MLP(object):
     def build_model(self):  # 建立网络结构
         print('Building multi-layer perception model...')
         self.input = pt.core.Variable((self.batch_size, self.input_size), init=False, trainable=False)
-        self.fc1 = pt.layer.Dense(self.input, self.input_size, self.hidden1, std=0.01)
+        self.fc1 = pt.layer.Dense(self.input, self.input_size, self.hidden1, std=0.01, name='fc1')
         self.relu1 = pt.ops.ReLU(self.fc1)
 
-        self.fc2 = pt.layer.Dense(self.relu1, self.hidden1, self.hidden2, std=0.01)
+        self.fc2 = pt.layer.Dense(self.relu1, self.hidden1, self.hidden2, std=0.01, name='fc2')
         self.relu2 = pt.ops.ReLU(self.fc2)
 
-        self.fc3 = pt.layer.Dense(self.relu2, self.hidden2, self.out_classes, std=0.01)
+        self.fc3 = pt.layer.Dense(self.relu2, self.hidden2, self.out_classes, std=0.01, name='fc3')
         self.relu3 = pt.ops.ReLU(self.fc3)
 
         self.softmax = pt.ops.SoftMax(self.relu3)
@@ -87,19 +86,19 @@ class MNIST_MLP(object):
         self.loss = pt.loss.CrossEntropyWithSoftMax(self.relu3, self.label)
     
         # correct version
-        self.t_fc1 = FullyConnectedLayer(self.input_size, self.hidden1)
-        self.t_relu1 = ReLULayer()
+        # self.t_fc1 = FullyConnectedLayer(self.input_size, self.hidden1)
+        # self.t_relu1 = ReLULayer()
 
-        self.t_fc2 = FullyConnectedLayer(self.hidden1, self.hidden2)
-        self.t_relu2 = ReLULayer()
+        # self.t_fc2 = FullyConnectedLayer(self.hidden1, self.hidden2)
+        # self.t_relu2 = ReLULayer()
 
-        self.t_fc3 = FullyConnectedLayer(self.hidden2, self.out_classes)
-        self.t_relu3 = ReLULayer()
+        # self.t_fc3 = FullyConnectedLayer(self.hidden2, self.out_classes)
+        # self.t_relu3 = ReLULayer()
 
-        self.t_softmax = SoftmaxLossLayer()
-        self.update_layer_list = [self.t_fc1, self.t_fc2, self.t_fc3]
-        for layer in self.update_layer_list:
-            layer.init_param()
+        # self.t_softmax = SoftmaxLossLayer()
+        # self.update_layer_list = [self.t_fc1, self.t_fc2, self.t_fc3]
+        # for layer in self.update_layer_list:
+        #     layer.init_param()
 
 
 
@@ -117,6 +116,7 @@ class MNIST_MLP(object):
 
         # pt.get_node_from_graph('Variable:11').set_value(self.t_fc3.weight)
         # pt.get_node_from_graph('Variable:12').set_value(self.t_fc3.bias)
+        pt.default_graph.draw()
 
         for idx_epoch in range(self.max_epoch):
             self.shuffle_data()
@@ -127,27 +127,27 @@ class MNIST_MLP(object):
                 self.label.set_value(batch_labels)
                 self.loss.forward()
                 
-                r_fc1 = self.t_fc1.forward(batch_images)
-                r_relu1 = self.t_relu1.forward(r_fc1)
-                r_fc2 = self.t_fc2.forward(r_relu1)
-                r_relu2 = self.t_relu2.forward(r_fc2)
-                r_fc3 = self.t_fc3.forward(r_relu2)
-                r_relu3 = self.t_relu3.forward(r_fc3)
-                prob = self.t_softmax.forward(r_relu3)
-                loss2 = self.t_softmax.get_loss(batch_labels)
+                # r_fc1 = self.t_fc1.forward(batch_images)
+                # r_relu1 = self.t_relu1.forward(r_fc1)
+                # r_fc2 = self.t_fc2.forward(r_relu1)
+                # r_relu2 = self.t_relu2.forward(r_fc2)
+                # r_fc3 = self.t_fc3.forward(r_relu2)
+                # r_relu3 = self.t_relu3.forward(r_fc3)
+                # prob = self.t_softmax.forward(r_relu3)
+                # loss2 = self.t_softmax.get_loss(batch_labels)
 
                 # assert (r_fc1 == pt.get_node_from_graph('Add:4').value).all()
                 # assert (r_fc2 == pt.get_node_from_graph('Add:9').value).all()
                 # assert (r_fc3 == pt.get_node_from_graph('Add:14').value).all()
                 # assert (prob == self.loss.prob).all()
                 
-                dloss = self.t_softmax.backward()
-                b_relu3 = self.t_relu3.backward(dloss)
-                b_fc3 = self.t_fc3.backward(b_relu3)
-                b_relu2 = self.t_relu2.backward(b_fc3)
-                b_fc2 = self.t_fc2.backward(b_relu2)
-                b_relu1 = self.t_relu1.backward(b_fc2)
-                b_fc1 = self.t_fc1.backward(b_relu1)
+                # dloss = self.t_softmax.backward()
+                # b_relu3 = self.t_relu3.backward(dloss)
+                # b_fc3 = self.t_fc3.backward(b_relu3)
+                # b_relu2 = self.t_relu2.backward(b_fc3)
+                # b_fc2 = self.t_fc2.backward(b_relu2)
+                # b_relu1 = self.t_relu1.backward(b_fc2)
+                # b_fc1 = self.t_fc1.backward(b_relu1)
 
                 for node in trainable_node:
                     node.backward(self.loss)
@@ -161,8 +161,8 @@ class MNIST_MLP(object):
                 # assert computeMse(self.t_fc2.d_bias, pt.get_node_from_graph('Variable:7').graident) < 1e-10
                 # assert computeMse(self.t_fc1.d_weight, pt.get_node_from_graph('Variable:1').graident) < 1e-10
                 # assert computeMse(self.t_fc1.d_bias, pt.get_node_from_graph('Variable:2').graident) < 1e-10
-                for layer in self.update_layer_list:
-                    layer.update_param(self.lr)
+                # for layer in self.update_layer_list:
+                #     layer.update_param(self.lr)
 
                 loss1 = self.loss.value
 
