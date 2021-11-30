@@ -75,6 +75,19 @@ class Boardcast(Operator):
     def get_graident(self, parent):
         return cp.sum(self.graident, axis=self.boardcast_dims, keepdims=True)
     
+
+class SoftMax(Operator):
+    def __init__(self, *parents, **kargs) -> None:
+        Operator.__init__(self, *parents, **kargs)
+
+    def compute(self):
+        input_max = cp.max(self.parents[0].value, axis=1, keepdims=True)
+        input_exp = cp.exp(cp.subtract(self.parents[0].value, input_max))
+        self.value = input_exp / cp.sum(input_exp, axis=1, keepdims=True)
+    
+    def get_graident(self, parent):
+        raise NotImplementedError("Do not use softmax to do BP")
+
 class ReLU(Operator):
     
     def __init__(self, *parents, **kargs) -> None:

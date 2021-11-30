@@ -46,8 +46,7 @@ class CrossEntropyWithSoftMax(LossFunction):
 
         self.label_onehot = cp.zeros_like(self.prob)
         self.label_onehot[cp.arange(self.batch_size), self.parents[1].value] = 1.0
-        loss = -cp.sum(cp.multiply(cp.log(cp.add(self.prob, self.eps)), self.label_onehot)) / self.batch_size
-        return loss
+        self.value = -cp.sum(cp.multiply(cp.log(cp.add(self.prob, self.eps)), self.label_onehot)) / self.batch_size
     
     def get_graident(self, parent):
         return (self.prob - self.label_onehot) / self.batch_size
