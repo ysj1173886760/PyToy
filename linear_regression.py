@@ -1,25 +1,26 @@
 import pytoy as pt
 import numpy as cp
 
-x = pt.core.Variable(dims=(3, 1), init=False, trainable=False, name='x')
-w = pt.core.Variable(dims=(1, 3), init=True, trainable=True, name='w')
+BATCH_SIZE = 10
+x = pt.core.Variable(dims=(BATCH_SIZE, 6), init=False, trainable=False, name='x')
+w = pt.core.Variable(dims=(6, 1), init=True, trainable=True, name='w')
 b = pt.core.Variable(dims=(1, 1), init=True, trainable=True, name='b')
+boardcast_b = pt.ops.Boardcast(b, to_shape=(BATCH_SIZE, 1))
 
-mat = pt.ops.MatMul(w, x)
-output = pt.ops.Add(mat, b)
-label = pt.core.Variable(dims=(1, 1), init=False, trainable=False)
+mat = pt.ops.MatMul(x, w)
+output = pt.ops.Add(mat, boardcast_b)
+label = pt.core.Variable(dims=(BATCH_SIZE, 1), init=False, trainable=False)
 loss = pt.loss.L2Loss(output, label)
 
-real_w = cp.array([[2, 5, 7]], dtype=cp.float32)
+real_w = cp.array([[2, 5, 7, 16, -10, -50]], dtype=cp.float32).T
 real_b = cp.array([[3]], dtype=cp.float32)
 
 lr = 0.01
 
-for epoch in range(1000):
-
-    input = cp.random.randint(-5, 5, (3, 1))
+for epoch in range(100):
+    input = cp.random.randint(-10, 10, (BATCH_SIZE, 6))
     x.set_value(input)
-    label.set_value(cp.add(cp.matmul(real_w, input), real_b))
+    label.set_value(cp.add(cp.matmul(input, real_w), real_b))
     loss.forward()
     w.backward(loss)
     b.backward(loss)

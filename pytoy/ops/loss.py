@@ -16,13 +16,17 @@ class LossFunction(Node):
     pass
 
 class L2Loss(LossFunction):
-    
+    # assume the param matrixes are [batch, features]
+    def __init__(self, *parents, **kargs) -> None:
+        LossFunction.__init__(self, *parents, **kargs)
+        self.batch_size = parents[0].dims[0]
+
     def compute(self):
-        self.value = cp.sum(cp.square(self.parents[0].value - self.parents[1].value))
+        self.value = cp.sum(cp.square(self.parents[0].value - self.parents[1].value)) / self.batch_size
 
     def get_graident(self, parent):
         
         if parent is self.parents[0]:
-            return 2 * cp.subtract(self.parents[0].value, self.parents[1].value)
+            return 2 * cp.subtract(self.parents[0].value, self.parents[1].value) / self.batch_size
         else:
-            return 2 * cp.subtract(self.parents[1].value, self.parents[0].value)
+            return 2 * cp.subtract(self.parents[1].value, self.parents[0].value) / self.batch_size
