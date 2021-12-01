@@ -141,7 +141,7 @@ class CIFAR(object):
         train_accuracy = 0.0
         validation_loss = 0.0
 
-        trainable_node = pt.get_trainable_variables_from_graph()
+        adam = pt.optimizer.Adam(pt.default_graph, self.layers['loss'], LEARNING_RATE)
         # tqdm stuff
         for epoch in range(100):
             np.random.shuffle(random_index)
@@ -152,27 +152,31 @@ class CIFAR(object):
             for cur in bar:
                 batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
                 batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
-                time1 = time.time()
+
+                # time1 = time.time()
                 self.input.set_value(batch_image)
                 self.label.set_value(batch_label)
-                time2 = time.time()
-                self.layers['loss'].forward()
-                time3 = time.time()
-                total_loss += self.layers['loss'].value
+                # time2 = time.time()
+                # self.layers['loss'].forward()
+                # time3 = time.time()
+                # total_loss += self.layers['loss'].value
 
-                time4 = time.time()
-                for node in trainable_node:
-                    node.backward(self.layers['loss'])
+                # time4 = time.time()
+                # for node in trainable_node:
+                #     node.backward(self.layers['loss'])
 
-                time5 = time.time()
-                for node in trainable_node:
-                    node.set_value(node.value - LEARNING_RATE * node.graident)
-                time6 = time.time()
+                # time5 = time.time()
+                # for node in trainable_node:
+                #     node.set_value(node.value - LEARNING_RATE * node.graident)
+                # time6 = time.time()
                 
-                pt.default_graph.clear_graident()
-                time7 = time.time()
+                # pt.default_graph.clear_graident()
+                # time7 = time.time()
                 # print('%f %f %f %f %f %f' % (time2 - time1, time3 - time2, time4 - time3,
                 #                              time5 - time4, time6 - time5, time7 - time6))
+                adam.step()
+                total_loss += self.layers['loss'].value
+                adam.update()
 
                 bar.set_description("Epoch %d Loss %.6f ValidationLoss %.3f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), validation_loss, last_accuracy, train_accuracy))
                 
