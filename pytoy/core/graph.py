@@ -12,6 +12,7 @@ class Graph:
 
     def __init__(self) -> None:
         self.nodes = []
+        self.training = True
 
     def add_node(self, node):
         self.nodes.append(node)
@@ -27,6 +28,16 @@ class Graph:
         
     def node_count(self):
         return len(self.nodes)
+    
+    def train(self):
+        """[Train Mode]
+        """
+        self.training = True
+    
+    def evaluate(self):
+        """[Evaluate Mode]
+        """
+        self.training = False
 
     def draw(self, ax=None):
         try:

@@ -235,3 +235,82 @@ class MaxPoolingOperator(Operator):
                     cp.add(contrib[:, :, x, y, :].reshape(self.graident.shape[0], self.graident.shape[1], self.kernel_size, self.kernel_size), \
                             bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size])
         return bottom_diff
+
+class BatchNormOperator(Operator):
+    """[summary]
+    we got 3 parents here.
+    first is input, should be formatted as [batch_size, ...],
+    second is gamma, should be formatted as [1, ...], where ... is same as above,
+    third is bias, should be formatted as [1, ...], where ... is same as above
+
+    Args:
+        Operator ([type]): [description]
+    """
+
+    # TODO: BatchNorm can be rewritten to the combination of basic operators
+    def __init__(self, *parents, **kargs) -> None:
+        Operator.__init__(self, *parents, **kargs)
+        self.dims = parents[0].dims
+
+        self.running_mean_x = None
+        self.running_var_x = None
+
+        # forward params
+        self.batch_size = self.dims[0]
+        self.running_avg_gamma = 0.9
+
+        # backward params
+        self.gamma_grad = cp.zeros(0)
+        self.bias_grad = cp.zeros(0)
+
+    def update_running_variables(self) -> None:
+        if self.running_mean_x is not None:
+            gamma = self.running_avg_gamma
+            self.running_mean_x = gamma * self.running_mean_x + \
+                                  (1.0 - gamma) * self.mean_x
+            self.running_var_x = gamma * self.running_var_x + \
+                                 (1. - gamma) * self.var_x
+        else:
+            self.running_mean_x = self.mean_x
+            self.running_var_x = self.var_x
+
+    def compute(self):
+        if self.graph.training:
+            self.mean_x = cp.mean(self.parents[0].value, axis=0, keepdims=True)
+            self.var_x = cp.var(self.parents[0].value, axis=0, keepdims=True)
+            self.update_running_variables()
+        else:
+            if self.running_mean_x is not None:
+                self.mean_x = self.running_mean_x.copy()
+                self.var_x = self.running_var_x.copy()
+            else:
+                self.mean_x = 0.0
+                self.var_x = 1.0
+
+        self.var_x += 1e-9
+        self.stddev_x = cp.sqrt(self.var_x)
+        self.x_minus_mean = cp.subtract(self.parents[0].value, self.mean_x)
+        self.standard_x = cp.divide(self.x_minus_mean, self.stddev_x)
+        self.value = self.parents[1].value * self.standard_x + self.parents[2].value
+
+    def get_graident(self, parent):
+        if parent == self.parents[0]:
+            standard_grad = self.graident * self.parents[1].value
+
+            var_grad = cp.sum(standard_grad * self.x_minus_mean * -0.5 * self.var_x ** (-3/2),
+                            axis=0, keepdims=True)
+            stddev_inv = 1 / self.stddev_x
+            aux_x_minus_mean = 2 * self.x_minus_mean / self.batch_size
+
+            mean_grad = (cp.sum(standard_grad * -stddev_inv, axis=0,
+                                keepdims=True) +
+                                var_grad * cp.sum(-aux_x_minus_mean, axis=0,
+                                keepdims=True))
+            return standard_grad * stddev_inv + var_grad * aux_x_minus_mean + \
+                mean_grad / self.batch_size
+
+        elif parent == self.parents[1]:
+            return cp.sum(self.graident * self.standard_x, axis=0, keepdims=True)
+
+        else:
+            return cp.sum(self.graident, axis=0, keepdims=True)

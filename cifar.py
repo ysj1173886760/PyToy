@@ -5,7 +5,7 @@ import pytoy as pt
 import os
 
 from pytoy.core.node import Variable
-from pytoy.layer.layer import Conv, Dense, Flatten, MaxPooling
+from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling
 from pytoy.ops.loss import CrossEntropyWithSoftMax
 from pytoy.ops.ops import ReLU, SoftMax
 import tqdm
@@ -100,15 +100,18 @@ class CIFAR(object):
         self.layers = {}
         self.layers['conv1_1'] = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.1)
         self.layers['relu1_2'] = ReLU(self.layers['conv1_1'], prefix='relu1_2')
-        self.layers['pool1'] = MaxPooling(self.layers['relu1_2'], 2, 2, name='pool1')
+        self.layers['bn1'] = BatchNorm(self.layers['relu1_2'], name='bn1')
+        self.layers['pool1'] = MaxPooling(self.layers['bn1'], 2, 2, name='pool1')
 
         self.layers['conv2_1'] = Conv(self.layers['pool1'], 32, 64, 3, 1, 1, name='conv2_1', std=0.1)
         self.layers['relu2_2'] = ReLU(self.layers['conv2_1'], prefix='relu2_2')
-        self.layers['pool2'] = MaxPooling(self.layers['relu2_2'], 2, 2, name='pool2')
+        self.layers['bn2'] = BatchNorm(self.layers['relu2_2'], name='bn2')
+        self.layers['pool2'] = MaxPooling(self.layers['bn2'], 2, 2, name='pool2')
 
         self.layers['conv3_1'] = Conv(self.layers['pool2'], 64, 128, 3, 1, 1, name='conv3_1', std=0.01)
         self.layers['relu3_2'] = ReLU(self.layers['conv3_1'], prefix='relu3_2')
-        self.layers['pool3'] = MaxPooling(self.layers['relu3_2'], 2, 2, name='pool3')
+        self.layers['bn3'] = BatchNorm(self.layers['relu3_2'], name='bn3')
+        self.layers['pool3'] = MaxPooling(self.layers['bn3'], 2, 2, name='pool3')
 
         self.layers['flatten'] = Flatten(self.layers['pool3'])
         self.layers['fc1'] = Dense(self.layers['flatten'], 2048, 10, std=0.01)
@@ -122,6 +125,8 @@ class CIFAR(object):
         label = cp.array(test_label)
         pred_results = cp.zeros([test.shape[0]])
         total_loss = 0
+        self.graph.evaluate()
+        
         for idx in range(int(test.shape[0] / BATCH_SIZE)):
             batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE]
             self.input.set_value(batch_images)
@@ -140,6 +145,7 @@ class CIFAR(object):
         last_accuracy = 0.0
         train_accuracy = 0.0
         validation_loss = 0.0
+        self.graph = pt.default_graph
 
         adam = pt.optimizer.Adam(pt.default_graph, self.layers['loss'], LEARNING_RATE)
         # tqdm stuff
@@ -150,6 +156,7 @@ class CIFAR(object):
             bar = tqdm.tqdm(range(max_batch))
             total_loss = 0
             for cur in bar:
+                self.graph.train()
                 batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
                 batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
 

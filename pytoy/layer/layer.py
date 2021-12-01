@@ -74,3 +74,18 @@ def Flatten(input, **kargs):
     batch_size = input.dims[0]
     feature_size = np.product(input.dims[1: ])
     return Reshape(input, to_shape=(batch_size, feature_size), prefix=name)
+
+def BatchNorm(input, **kargs):
+    """[batch normalization layer]
+
+    Args:
+        input ([type]): [description]
+    """
+
+    name = kargs.get('name', "")
+    gamma = Variable(tuple([1] + list(input.dims[1: ])), init=False, trainable=True, prefix=name)
+    # initialize to all one matrix
+    gamma.set_value(cp.ones(gamma.dims))
+
+    bias = Variable(tuple([1] + list(input.dims[1: ])), init=True, trainable=True, bias=True, prefix=name)
+    return BatchNormOperator(input, gamma, bias, prefix=name)
