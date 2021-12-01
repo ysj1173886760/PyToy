@@ -8,7 +8,8 @@
 @Desc    :   Operators
 '''
 
-import numpy as cp
+import cupy as cp
+import numpy as np
 from ..core import Node
 
 # abc for operator
@@ -75,6 +76,21 @@ class Boardcast(Operator):
     def get_graident(self, parent):
         return cp.sum(self.graident, axis=self.boardcast_dims, keepdims=True)
     
+class Reshape(Operator):
+    
+    def __init__(self, *parents, **kargs) -> None:
+        Operator.__init__(self, *parents, **kargs)
+        self.from_shape = parents[0].dims
+        self.to_shape = kargs.get('to_shape')
+        self.dims = self.to_shape
+
+        assert np.product(self.from_shape) == np.product(self.to_shape)
+    
+    def compute(self):
+        self.value = cp.reshape(self.parents[0].value, self.to_shape)
+    
+    def get_graident(self, parent):
+        return cp.reshape(self.graident, self.from_shape)
 
 class SoftMax(Operator):
     def __init__(self, *parents, **kargs) -> None:
@@ -100,11 +116,12 @@ class ReLU(Operator):
     def get_graident(self, parent):
         return cp.where(self.value > 0, self.graident, 0)
 
-class Conv(Operator):
+class ConvOperator(Operator):
     # assume parent[0] is input, parent[1] is kernel
     # request input dims like [N, C, H, W]
     """[Conv]
-    first input is feature, second input is kernel
+    first input is feature [N, C, H, W],
+    second input is kernel [Cin, K, K, Cout]
 
     Args:
         Operator ([type]): [description]
@@ -112,7 +129,7 @@ class Conv(Operator):
     
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)
-        self.kernel_size = kargs.get('kernet_size')
+        self.kernel_size = kargs.get('kernel_size')
         self.stride = kargs.get('stride')
         self.padding = kargs.get('padding')
         self.channel_in = kargs.get('channel_in')
@@ -130,14 +147,14 @@ class Conv(Operator):
         self.dims = (self.input_shape[0], self.channel_out, self.height_out, self.width_out)
     
     def compute(self):
-        self.input_pad = cp.pad(self.parents[0], ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant')
+        self.input_pad = cp.pad(self.parents[0].value, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant')
         self.col = cp.empty((self.input_shape[0], self.mat_h, self.mat_w))
         cur = 0
         for x in range(self.height_out):
             for y in range(self.width_out):
                 bias_x = x * self.stride
                 bias_y = y * self.stride
-                self.col[:, cur, :] = self.input_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(input.shape[0], -1)
+                self.col[:, cur, :] = self.input_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.input_shape[0], -1)
                 cur = cur + 1
         self.value = cp.matmul(self.col, self.parents[1].value.reshape(-1, self.parents[1].value.shape[-1]))
         self.value = cp.moveaxis(self.value.reshape(self.input_shape[0], self.height_out, self.width_out, self.channel_out), 3, 1)
@@ -161,9 +178,60 @@ class Conv(Operator):
             weight_tmp = cp.transpose(self.parents[1].value, [3, 1, 2, 0]).reshape(self.channel_out, -1, self.channel_in)[:, ::-1, :].reshape(-1, self.channel_in)
             bottom_diff = cp.matmul(backward_col, weight_tmp)
             bottom_diff = cp.transpose(bottom_diff.reshape(self.graident.shape[0], self.input_shape[2], self.input_shape[3], self.input_shape[1]), [0, 3, 1, 2])
+            return bottom_diff
         else:
             # top_diff_col = cp.transpose(top_diff, [1, 0, 2, 3]).reshape(top_diff.shape[1], -1)
             # self.d_weight = cp.matmul(tmp, top_diff_col.T).reshape(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out)
             top_diff_col = cp.transpose(self.graident, [1, 0, 2, 3]).reshape(self.graident.shape[1], -1)
             col_reshape = cp.transpose(self.col.reshape(-1, self.col.shape[-1]), [1, 0])
             return cp.matmul(col_reshape, top_diff_col.T).reshape(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out)
+
+class MaxPoolingOperator(Operator):
+    """[summary]
+    input dims are [N, C, H, W]
+
+    Args:
+        Operator ([type]): [description]
+    """
+    
+    def __init__(self, *parents, **kargs) -> None:
+        Operator.__init__(self, *parents, **kargs)
+        self.kernel_size = kargs.get('kernel_size')
+        self.stride = kargs.get('stride')
+
+        self.input_shape = parents[0].dims # [N, C, H, W]
+        self.height_out = int((self.input_shape[2] - self.kernel_size) / self.stride) + 1
+        self.width_out = int((self.input_shape[3] - self.kernel_size) / self.stride) + 1
+        self.mat_w = self.kernel_size * self.kernel_size
+        self.mat_h = self.height_out * self.width_out
+        self.dims = (self.input_shape[0], self.input_shape[1], self.height_out, self.width_out)
+
+    def compute(self):
+        col = cp.empty((self.input_shape[0], self.input_shape[1], self.mat_h, self.mat_w))
+        cur = 0
+        for x in range(self.height_out):
+            for y in range(self.width_out):
+                bias_x = x * self.stride
+                bias_y = y * self.stride
+                col[:, :, cur, :] = self.parents[0].value[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.input_shape[0], self.input_shape[1], -1)
+                cur = cur + 1
+
+        output = cp.max(col, axis=3, keepdims=True)
+        max_index = cp.argmax(col.reshape(self.input_shape[0], self.input_shape[1], self.height_out, self.width_out, self.kernel_size * self.kernel_size), axis=4)
+        self.max_elements = cp.zeros((self.input_shape[0], self.input_shape[1], self.height_out, self.width_out, self.kernel_size * self.kernel_size))
+        n, c, h, w = self.max_elements.shape[: 4]
+        N, C, H, W = cp.ogrid[:n, :c, :h, :w]
+        self.max_elements[N, C, H, W, max_index] = 1
+        self.value = output.reshape(self.input_shape[0], self.input_shape[1], self.height_out, self.width_out)
+
+    def get_graident(self, parents):
+        bottom_diff = cp.zeros(self.input_shape)
+        contrib = cp.multiply(self.max_elements, (self.graident.reshape(list(self.graident.shape) + [1])))
+        for x in range(self.graident.shape[2]):
+            for y in range(self.graident.shape[3]):
+                bias_x = x * self.stride
+                bias_y = y * self.stride
+                bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] = \
+                    cp.add(contrib[:, :, x, y, :].reshape(self.graident.shape[0], self.graident.shape[1], self.kernel_size, self.kernel_size), \
+                            bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size])
+        return bottom_diff

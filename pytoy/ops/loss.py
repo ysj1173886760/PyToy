@@ -8,7 +8,7 @@
 @Desc    :   Loss function
 '''
 
-import numpy as cp
+import cupy as cp
 from ..core import Node
 
 # abc for loss function

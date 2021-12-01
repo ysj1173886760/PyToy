@@ -8,7 +8,7 @@
 @Desc    :   None
 '''
 
-import numpy as cp
+import cupy as cp
 import struct
 import os
 import time
