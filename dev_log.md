@@ -17,3 +17,7 @@ mnist训练成功
 实现了cifar，但是莫名其妙的变快了，我自己都不知道为什么
 
 按理说这个写法应该是会慢一些才对
+
+![20211201202833](https://picsheep.oss-cn-beijing.aliyuncs.com/pic/20211201202833.png)
+
+修复画图后的计算图

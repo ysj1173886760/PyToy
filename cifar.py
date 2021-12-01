@@ -207,4 +207,5 @@ if __name__ == '__main__':
     test_data = augumentor.augument(test_data, False)
     cifar = CIFAR()
     cifar.build()
-    cifar.train(train_data, train_label, test_data, test_label)
+    pt.default_graph.draw()
+    # cifar.train(train_data, train_label, test_data, test_label)
