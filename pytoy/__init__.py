@@ -13,3 +13,4 @@ from .core import *
 from .ops import *
 from .layer import *
 from .optimizer import *
+from .trainer import *

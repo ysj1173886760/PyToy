@@ -3,6 +3,7 @@ import numpy as np
 import time
 import pytoy as pt
 import os
+from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
 from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling
@@ -147,6 +148,13 @@ class CIFAR(object):
         validation_loss = 0.0
         self.graph = pt.default_graph
 
+        saver = pt.trainer.Saver('./model')
+        # saver.load()
+        # self.layers = {}
+        # self.layers['loss'] = get_node_from_graph('CrossEntropyWithSoftMax:35')
+        # self.layers['softmax'] = get_node_from_graph('SoftMax:34')
+        # self.input = get_node_from_graph('Variable:0')
+        # self.label = get_node_from_graph('Variable:1')
         adam = pt.optimizer.Adam(pt.default_graph, self.layers['loss'], LEARNING_RATE)
         # tqdm stuff
         for epoch in range(100):
@@ -186,7 +194,8 @@ class CIFAR(object):
                 adam.update()
 
                 bar.set_description("Epoch %d Loss %.6f ValidationLoss %.3f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), validation_loss, last_accuracy, train_accuracy))
-                
+
+            # saver.save()
             last_accuracy, validation_loss = self.evaluate(test_data, test_label)
 
 if __name__ == '__main__':
@@ -207,5 +216,4 @@ if __name__ == '__main__':
     test_data = augumentor.augument(test_data, False)
     cifar = CIFAR()
     cifar.build()
-    pt.default_graph.draw()
-    # cifar.train(train_data, train_label, test_data, test_label)
+    cifar.train(train_data, train_label, test_data, test_label)
