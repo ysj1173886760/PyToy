@@ -413,11 +413,12 @@ class AvgPoolingOperator(Operator):
     def get_graident(self, parents):
         bottom_diff = cp.zeros(self.input_shape)
         area = self.kernel_size * self.kernel_size
+        boardcast_diff = cp.broadcast_to(self.graident, (self.graident.shape[0], self.graident.shape[1], self.kernel_size, self.kernel_size))
         for x in range(self.graident.shape[2]):
             for y in range(self.graident.shape[3]):
                 bias_x = x * self.stride
                 bias_y = y * self.stride
                 bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] = \
-                    cp.add(self.graident[:, :, x, y].reshape(self.graident.shape[0], self.graident.shape[1], self.kernel_size, self.kernel_size) / area, \
+                    cp.add(boardcast_diff[:, :, x, y, :, :] / area, \
                             bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size])
         return bottom_diff
