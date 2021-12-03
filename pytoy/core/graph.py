@@ -8,6 +8,8 @@
 @Desc    :   Compute Graph
 '''
 
+import numpy as np
+
 class Graph:
 
     def __init__(self) -> None:
@@ -38,6 +40,16 @@ class Graph:
         """[Evaluate Mode]
         """
         self.training = False
+    
+    def param_count(self):
+        total = 0
+        trainable = 0
+        for node in self.nodes:
+            if hasattr(node, 'dims'):
+                total += np.product(list(node.dims))
+                if hasattr(node, 'trainable') and node.trainable:
+                    trainable += np.product(list(node.dims))
+        print('total params: {} trainable params: {}'.format(total, trainable))
 
     def draw(self, ax=None):
         try:
