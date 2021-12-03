@@ -100,7 +100,7 @@ class CIFAR(object):
         self.label = Variable((BATCH_SIZE, ), init=False, trainable=False)
 
         net = Conv(self.input, 3, 16, 3, 1, 1, std=0.001, name='conv1')
-        net = BasicBlock(net, 16, 16, 1, name='res1')
+        net = BasicBlock(net, 16, 16, 2, name='res1')
         net = BasicBlock(net, 16, 16, 1, name='res2')
         net = BasicBlock(net, 16, 16, 1, name='res3')
         net = BasicBlock(net, 16, 32, 2, name='res4')
@@ -112,7 +112,7 @@ class CIFAR(object):
         net = MaxPooling(net, 2, 2, name='pool9')
 
         net = Flatten(net, name = 'flatten')
-        net = Dense(net, 1024, 10, name='fc4_1', std=0.001)
+        net = Dense(net, 256, 10, name='fc4_1', std=0.001)
 
         self.softmax = SoftMax(net)
         self.loss = CrossEntropyWithSoftMax(net, self.label)
@@ -212,4 +212,5 @@ if __name__ == '__main__':
     test_data = augumentor.augument(test_data, False)
     cifar = CIFAR()
     cifar.build()
-    cifar.train(train_data, train_label, test_data, test_label)
+    pt.default_graph.draw()
+    # cifar.train(train_data, train_label, test_data, test_label)

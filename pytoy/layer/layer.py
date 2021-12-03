@@ -145,9 +145,9 @@ def BasicBlock(input, in_channels, out_channels, stride=1, **kargs):
 
     shortcut = input
     if stride != 1 or in_channels != out_channels:
-        conv3 = Conv(input, in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False, 
+        conv3 = Conv(input, in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False, 
                     name=append_namescope(name, 'conv3'))
-        bn3 = BatchNorm(conv1, name=append_namescope(name, 'bn3'))
+        bn3 = BatchNorm(conv3, name=append_namescope(name, 'bn3'))
         shortcut = bn3
     
     return ReLU(AddOperator(residual_function, shortcut, prefix=name), name=append_namescope(name, 'relu3'))
