@@ -6,7 +6,7 @@ import os
 from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
-from pytoy.layer.layer import BasicBlock, BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
+from pytoy.layer.layer import AvgPooling, BasicBlock, BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
 from pytoy.ops.loss import CrossEntropyWithSoftMax
 from pytoy.ops.ops import SoftMax
 import tqdm
@@ -99,20 +99,21 @@ class CIFAR(object):
         self.input = Variable((BATCH_SIZE, 3, 32, 32), init=False, trainable=False)
         self.label = Variable((BATCH_SIZE, ), init=False, trainable=False)
 
-        net = Conv(self.input, 3, 16, 3, 1, 1, std=0.001, name='conv1')
-        net = BasicBlock(net, 16, 16, 2, name='res1')
-        net = BasicBlock(net, 16, 16, 1, name='res2')
-        net = BasicBlock(net, 16, 16, 1, name='res3')
-        net = BasicBlock(net, 16, 32, 2, name='res4')
-        net = BasicBlock(net, 32, 32, 1, name='res5')
-        net = BasicBlock(net, 32, 32, 1, name='res6')
-        net = BasicBlock(net, 32, 64, 2, name='res7')
-        net = BasicBlock(net, 64, 64, 1, name='res7')
-        net = BasicBlock(net, 64, 64, 1, name='res8')
-        net = MaxPooling(net, 2, 2, name='pool9')
+        # resnet18
+        net = Conv(self.input, 3, 64, 3, 1, 1, std=0.001, name='conv1')
+        net = BatchNorm(net, name='bn2')
+        net = BasicBlock(net, 64, 64, 1, name='res1_1')
+        net = BasicBlock(net, 64, 64, 1, name='res1_2')
+        net = BasicBlock(net, 64, 128, 2, name='res2_1')
+        net = BasicBlock(net, 128, 128, 1, name='res2_2')
+        net = BasicBlock(net, 128, 256, 2, name='res3_1')
+        net = BasicBlock(net, 256, 256, 1, name='res3_2')
+        net = BasicBlock(net, 256, 512, 2, name='res4_1')
+        net = BasicBlock(net, 512, 512, 1, name='res4_2')
+        net = AvgPooling(net, 4, 4)
 
         net = Flatten(net, name = 'flatten')
-        net = Dense(net, 256, 10, name='fc4_1', std=0.001)
+        net = Dense(net, 512, 10, name='fc4_1', std=0.001)
 
         self.softmax = SoftMax(net)
         self.loss = CrossEntropyWithSoftMax(net, self.label)
@@ -212,5 +213,4 @@ if __name__ == '__main__':
     test_data = augumentor.augument(test_data, False)
     cifar = CIFAR()
     cifar.build()
-    pt.default_graph.draw()
-    # cifar.train(train_data, train_label, test_data, test_label)
+    cifar.train(train_data, train_label, test_data, test_label)

@@ -383,3 +383,41 @@ class DropOutOperator(Operator):
 
     def get_graident(self, parent):
         return cp.multiply(self.graident, self.activated) / self.keep_prob
+
+class AvgPoolingOperator(Operator):
+    def __init__(self, *parents, **kargs) -> None:
+        Operator.__init__(self, *parents, **kargs)
+        self.kernel_size = kargs.get('kernel_size')
+        self.stride = kargs.get('stride')
+
+        self.input_shape = parents[0].dims # [N, C, H, W]
+        self.height_out = int((self.input_shape[2] - self.kernel_size) / self.stride) + 1
+        self.width_out = int((self.input_shape[3] - self.kernel_size) / self.stride) + 1
+        self.mat_w = self.kernel_size * self.kernel_size
+        self.mat_h = self.height_out * self.width_out
+        self.dims = (self.input_shape[0], self.input_shape[1], self.height_out, self.width_out)
+
+    def compute(self):
+        col = cp.empty((self.input_shape[0], self.input_shape[1], self.mat_h, self.mat_w))
+        cur = 0
+        for x in range(self.height_out):
+            for y in range(self.width_out):
+                bias_x = x * self.stride
+                bias_y = y * self.stride
+                col[:, :, cur, :] = self.parents[0].value[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.input_shape[0], self.input_shape[1], -1)
+                cur = cur + 1
+
+        output = cp.mean(col, axis=3)
+        self.value = output.reshape(self.input_shape[0], self.input_shape[1], self.height_out, self.width_out)
+
+    def get_graident(self, parents):
+        bottom_diff = cp.zeros(self.input_shape)
+        area = self.kernel_size * self.kernel_size
+        for x in range(self.graident.shape[2]):
+            for y in range(self.graident.shape[3]):
+                bias_x = x * self.stride
+                bias_y = y * self.stride
+                bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] = \
+                    cp.add(self.graident[:, :, x, y].reshape(self.graident.shape[0], self.graident.shape[1], self.kernel_size, self.kernel_size) / area, \
+                            bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size])
+        return bottom_diff

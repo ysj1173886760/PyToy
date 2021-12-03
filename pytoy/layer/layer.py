@@ -68,6 +68,18 @@ def MaxPooling(input, kernel_size, stride, **kargs):
     name = kargs.get('name', "")
     return MaxPoolingOperator(input, kernel_size=kernel_size, stride=stride, prefix=name)
 
+def AvgPooling(input, kernel_size, stride, **kargs):
+    """[summary]
+    input should be formatted as [N, C, H, W]
+    Args:
+        input ([type]): [description]
+        kernel_size ([type]): [description]
+        stride ([type]): [description]
+    """
+
+    name = kargs.get('name', "")
+    return AvgPoolingOperator(input, kernel_size=kernel_size, stride=stride, prefix=name)
+
 def Flatten(input, **kargs):
     """[summary]
     use reshape operator to flatten the input
@@ -145,7 +157,7 @@ def BasicBlock(input, in_channels, out_channels, stride=1, **kargs):
 
     shortcut = input
     if stride != 1 or in_channels != out_channels:
-        conv3 = Conv(input, in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False, 
+        conv3 = Conv(input, in_channels, out_channels, kernel_size=1, stride=stride, padding=0, bias=False, 
                     name=append_namescope(name, 'conv3'))
         bn3 = BatchNorm(conv3, name=append_namescope(name, 'bn3'))
         shortcut = bn3
