@@ -64,7 +64,7 @@ class Graph:
                     already.append({node, c})
 
         if ax is None:
-            fig = plt.figure(figsize=(30, 30))
+            fig = plt.figure(figsize=(50, 50))
             ax = fig.add_subplot(111)
 
         ax.clear()
