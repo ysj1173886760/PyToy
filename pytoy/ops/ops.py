@@ -163,8 +163,33 @@ class ConvOperator(Operator):
         self.value = cp.matmul(self.col, self.parents[1].value.reshape(-1, self.parents[1].value.shape[-1]))
         self.value = cp.moveaxis(self.value.reshape(self.input_shape[0], self.height_out, self.width_out, self.channel_out), 3, 1)
 
-    # refer to initial version
     def get_graident(self, parent):
+        if parent is self.parents[0]:
+            # self.graident N, Cout, H, W
+            # self.weight Cin, k, k, Cout
+            # top_diff Cin, k, k, N, H, W
+            top_diff = cp.matmul(self.parents[1].value.reshape(-1, self.channel_out), 
+                                    cp.transpose(self.graident, [1, 0, 2, 3]).reshape(self.channel_out, -1)).reshape(self.channel_in * self.kernel_size * self.kernel_size, self.input_shape[0], -1)
+            top_diff = cp.transpose(top_diff, [1, 0, 2]).reshape(self.input_shape[0], self.channel_in * self.kernel_size * self.kernel_size, self.dims[2], self.dims[3])
+            bottom_diff = cp.empty((self.input_shape[0], self.channel_in, self.height, self.width))
+
+            for x in range(self.dims[2]):
+                for y in range(self.dims[3]):
+                    bias_x = x * self.stride
+                    bias_y = y * self.stride
+                    bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] = \
+                        top_diff[:, :, x, y].reshape(self.graident.shape[0], self.channel_in, self.kernel_size, self.kernel_size)
+
+            bottom_diff = bottom_diff[:, :, self.padding: self.padding + self.input_shape[2], self.padding: self.padding + self.input_shape[3]]
+            return bottom_diff
+        else:
+            # same as above
+            top_diff_col = cp.transpose(self.graident, [1, 0, 2, 3]).reshape(self.graident.shape[1], -1)
+            col_reshape = cp.transpose(self.col.reshape(-1, self.col.shape[-1]), [1, 0])
+            return cp.matmul(col_reshape, top_diff_col.T).reshape(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out)
+    
+    def tmp(self, parent):
+        # TODO: figure out why this was wrong
         if parent is self.parents[0]:
             backward_col = cp.empty((self.graident.shape[0], self.input_shape[2] * self.input_shape[3], self.kernel_size * self.kernel_size * self.channel_out))
             pad_height = int(((self.input_shape[2] - 1) * self.stride + self.kernel_size - self.height_out) / 2)
@@ -176,6 +201,7 @@ class ConvOperator(Operator):
                 for y in range(self.input_shape[3]):
                     bias_x = x * self.stride
                     bias_y = y * self.stride
+                    # cout * k * k
                     backward_col[:, cur, :] = top_diff_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.graident.shape[0], -1)
                     cur = cur + 1
 
@@ -189,6 +215,22 @@ class ConvOperator(Operator):
             top_diff_col = cp.transpose(self.graident, [1, 0, 2, 3]).reshape(self.graident.shape[1], -1)
             col_reshape = cp.transpose(self.col.reshape(-1, self.col.shape[-1]), [1, 0])
             return cp.matmul(col_reshape, top_diff_col.T).reshape(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out)
+    
+    def raw(self):
+        bottom_diff = np.zeros(self.input_pad.shape)
+        for idxn in range(self.graident.shape[0]):
+            for idxc in range(self.graident.shape[1]):
+                for idxh in range(self.graident.shape[2]):
+                    for idxw in range(self.graident.shape[3]):
+                        # TODO： 计算卷积层的反向传播， 权重、偏置的梯度和本层损失
+                        bias_x = idxh * self.stride
+                        bias_y = idxw * self.stride
+                        bottom_diff[idxn, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size] += self.graident[idxn, idxc, idxh, idxw] * self.parents[1].value[:, :, :, idxc]
+        bottom_diff = bottom_diff[:, :, self.padding: self.input_pad.shape[2] - self.padding, self.padding: self.input_pad.shape[3] - self.padding]
+        return bottom_diff
+            
+def computeMse(input1, input2):
+    return cp.sum(cp.square(input1.flatten() - input2.flatten()))
 
 class MaxPoolingOperator(Operator):
     """[summary]

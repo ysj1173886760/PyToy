@@ -6,7 +6,7 @@ import os
 from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
-from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
+from pytoy.layer.layer import BasicBlock, BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
 from pytoy.ops.loss import CrossEntropyWithSoftMax
 from pytoy.ops.ops import SoftMax
 import tqdm
@@ -99,39 +99,20 @@ class CIFAR(object):
         self.input = Variable((BATCH_SIZE, 3, 32, 32), init=False, trainable=False)
         self.label = Variable((BATCH_SIZE, ), init=False, trainable=False)
 
-        net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
-        net = ReLU(net, name='relu1_2')
-        net = BatchNorm(net, name='bn1_3')
-        net = Conv(net, 32, 32, 3, 1, 1, name='conv1_4', std=0.001)
-        net = ReLU(net, name='relu1_5')
-        net = BatchNorm(net, name='bn1_6')
-        net = MaxPooling(net, 2, 2, name='pool1_7')
-        net = DropOut(net, 0.3, name='dropout1_8')
-
-        net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
-        net = ReLU(net, name='relu2_2')
-        net = BatchNorm(net, name='bn2_3')
-        net = Conv(net, 64, 64, 3, 1, 1, name='conv2_4', std=0.001)
-        net = ReLU(net, name='relu2_5')
-        net = BatchNorm(net, name='bn2_6')
-        net = MaxPooling(net, 2, 2, name='pool2_7')
-        net = DropOut(net, 0.5, name='dropout2_8')
-
-        net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
-        net = ReLU(net, name='relu3_2')
-        net = BatchNorm(net, name='bn3_3')
-        net = Conv(net, 128, 128, 3, 1, 1, name='conv3_4', std=0.001)
-        net = ReLU(net, name='relu3_5')
-        net = BatchNorm(net, name='bn3_6')
-        net = MaxPooling(net, 2, 2, name='pool3_7')
-        net = DropOut(net, 0.5, name='dropout3_8')
+        net = Conv(self.input, 3, 16, 3, 1, 1, std=0.001, name='conv1')
+        net = BasicBlock(net, 16, 16, 1, name='res1')
+        net = BasicBlock(net, 16, 16, 1, name='res2')
+        net = BasicBlock(net, 16, 16, 1, name='res3')
+        net = BasicBlock(net, 16, 32, 2, name='res4')
+        net = BasicBlock(net, 32, 32, 1, name='res5')
+        net = BasicBlock(net, 32, 32, 1, name='res6')
+        net = BasicBlock(net, 32, 64, 2, name='res7')
+        net = BasicBlock(net, 64, 64, 1, name='res7')
+        net = BasicBlock(net, 64, 64, 1, name='res8')
+        net = MaxPooling(net, 2, 2, name='pool9')
 
         net = Flatten(net, name = 'flatten')
-        net = Dense(net, 2048, 128, name='fc4_1', std=0.001)
-        net = ReLU(net, name='relu4_2')
-        net = BatchNorm(net, name='bn4_3')
-        net = DropOut(net, 0.5, name='dropout4_4')
-        net = Dense(net, 128, 10, name='fc4_5', std=0.001)
+        net = Dense(net, 1024, 10, name='fc4_1', std=0.001)
 
         self.softmax = SoftMax(net)
         self.loss = CrossEntropyWithSoftMax(net, self.label)
