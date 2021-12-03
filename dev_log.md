@@ -21,3 +21,7 @@ mnist训练成功
 ![20211201202833](https://picsheep.oss-cn-beijing.aliyuncs.com/pic/20211201202833.png)
 
 修复画图后的计算图
+
+12.2
+
+实现保存加载模型

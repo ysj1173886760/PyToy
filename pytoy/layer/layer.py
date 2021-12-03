@@ -26,7 +26,7 @@ def Dense(input, feature_in, feature_out, **kargs):
     std = kargs.get('std', 0.001)
     weight = Variable((feature_in, feature_out), init=True, trainable=True, std=std, mean=mean, prefix=name)
     bias = Variable((1, feature_out), init=True, trainable=True, bias=True, prefix=name)
-    return Add(MatMul(input, weight, prefix=name), bias, prefix=name)
+    return AddOperator(MatMulOperator(input, weight, prefix=name), bias, prefix=name)
 
 def Conv(input, channel_in, channel_out, kernel_size, stride, padding, **kargs):
     """[summary]
@@ -48,7 +48,7 @@ def Conv(input, channel_in, channel_out, kernel_size, stride, padding, **kargs):
     weight = Variable((channel_in, kernel_size, kernel_size, channel_out), init=True, trainable=True, std=std, mean=mean, prefix=name)
     # because input is [N, C, H, W], so we boardcast in (0, 2, 3) dims
     bias = Variable((1, channel_out, 1, 1), init=True, trainable=True, bias=True, prefix=name)
-    return Add(ConvOperator(input, weight, kernel_size=kernel_size, channel_in=channel_in, channel_out=channel_out,
+    return AddOperator(ConvOperator(input, weight, kernel_size=kernel_size, channel_in=channel_in, channel_out=channel_out,
                             stride=stride, padding=padding, prefix=name), bias, prefix=name)
 
 def MaxPooling(input, kernel_size, stride, **kargs):
@@ -73,7 +73,7 @@ def Flatten(input, **kargs):
     name = kargs.get('name', "")
     batch_size = input.dims[0]
     feature_size = np.product(input.dims[1: ])
-    return Reshape(input, to_shape=(batch_size, feature_size), prefix=name)
+    return ReshapeOperator(input, to_shape=(batch_size, feature_size), prefix=name)
 
 def BatchNorm(input, **kargs):
     """[batch normalization layer]
@@ -89,3 +89,24 @@ def BatchNorm(input, **kargs):
 
     bias = Variable(tuple([1] + list(input.dims[1: ])), init=True, trainable=True, bias=True, prefix=name)
     return BatchNormOperator(input, gamma, bias, prefix=name)
+
+def ReLU(input, **kargs):
+    """[ReLU layer]
+
+    Args:
+        input ([type]): [description]
+    """
+
+    name = kargs.get('name' "")
+    return ReLUOperator(input, prefix=name)
+
+def DropOut(input, drop_prob, **kargs):
+    """[DropOut layer]
+
+    Args:
+        input ([type]): [description]
+        drop_prob ([type]): [description]
+    """
+
+    name = kargs.get('name', "")
+    return DropOutOperator(input, drop_prob=drop_prob, prefix=name)

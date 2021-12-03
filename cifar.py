@@ -6,9 +6,9 @@ import os
 from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
-from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling
+from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
 from pytoy.ops.loss import CrossEntropyWithSoftMax
-from pytoy.ops.ops import ReLU, SoftMax
+from pytoy.ops.ops import SoftMax
 import tqdm
 
 def unpickle(file):
@@ -98,28 +98,43 @@ class CIFAR(object):
     def build(self):
         self.input = Variable((BATCH_SIZE, 3, 32, 32), init=False, trainable=False)
         self.label = Variable((BATCH_SIZE, ), init=False, trainable=False)
-        self.layers = {}
-        self.layers['conv1_1'] = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.1)
-        self.layers['relu1_2'] = ReLU(self.layers['conv1_1'], prefix='relu1_2')
-        self.layers['bn1'] = BatchNorm(self.layers['relu1_2'], name='bn1')
-        self.layers['pool1'] = MaxPooling(self.layers['bn1'], 2, 2, name='pool1')
 
-        self.layers['conv2_1'] = Conv(self.layers['pool1'], 32, 64, 3, 1, 1, name='conv2_1', std=0.1)
-        self.layers['relu2_2'] = ReLU(self.layers['conv2_1'], prefix='relu2_2')
-        self.layers['bn2'] = BatchNorm(self.layers['relu2_2'], name='bn2')
-        self.layers['pool2'] = MaxPooling(self.layers['bn2'], 2, 2, name='pool2')
+        net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
+        net = ReLU(net, name='relu1_2')
+        net = BatchNorm(net, name='bn1_3')
+        net = Conv(net, 32, 32, 3, 1, 1, name='conv1_4', std=0.001)
+        net = ReLU(net, name='relu1_5')
+        net = BatchNorm(net, name='bn1_6')
+        net = MaxPooling(net, 2, 2, name='pool1_7')
+        net = DropOut(net, 0.3, name='dropout1_8')
 
-        self.layers['conv3_1'] = Conv(self.layers['pool2'], 64, 128, 3, 1, 1, name='conv3_1', std=0.01)
-        self.layers['relu3_2'] = ReLU(self.layers['conv3_1'], prefix='relu3_2')
-        self.layers['bn3'] = BatchNorm(self.layers['relu3_2'], name='bn3')
-        self.layers['pool3'] = MaxPooling(self.layers['bn3'], 2, 2, name='pool3')
+        net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
+        net = ReLU(net, name='relu2_2')
+        net = BatchNorm(net, name='bn2_3')
+        net = Conv(net, 64, 64, 3, 1, 1, name='conv2_4', std=0.001)
+        net = ReLU(net, name='relu2_5')
+        net = BatchNorm(net, name='bn2_6')
+        net = MaxPooling(net, 2, 2, name='pool2_7')
+        net = DropOut(net, 0.5, name='dropout2_8')
 
-        self.layers['flatten'] = Flatten(self.layers['pool3'])
-        self.layers['fc1'] = Dense(self.layers['flatten'], 2048, 10, std=0.01)
+        net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
+        net = ReLU(net, name='relu3_2')
+        net = BatchNorm(net, name='bn3_3')
+        net = Conv(net, 128, 128, 3, 1, 1, name='conv3_4', std=0.001)
+        net = ReLU(net, name='relu3_5')
+        net = BatchNorm(net, name='bn3_6')
+        net = MaxPooling(net, 2, 2, name='pool3_7')
+        net = DropOut(net, 0.5, name='dropout3_8')
 
-        self.layers['softmax'] = SoftMax(self.layers['fc1'])
-        self.layers['loss'] = CrossEntropyWithSoftMax(self.layers['fc1'], self.label)
-        
+        net = Flatten(net, name = 'flatten')
+        net = Dense(net, 2048, 128, name='fc4_1', std=0.001)
+        net = ReLU(net, name='relu4_2')
+        net = BatchNorm(net, name='bn4_3')
+        net = DropOut(net, 0.5, name='dropout4_4')
+        net = Dense(net, 128, 10, name='fc4_5', std=0.001)
+
+        self.softmax = SoftMax(net)
+        self.loss = CrossEntropyWithSoftMax(net, self.label)
     
     def evaluate(self, test_data, test_label):
         test = cp.array(test_data)
@@ -132,10 +147,10 @@ class CIFAR(object):
             batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE]
             self.input.set_value(batch_images)
             self.label.set_value(label[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE])
-            self.layers['softmax'].forward()
-            self.layers['loss'].forward()
-            total_loss += self.layers['loss'].value
-            pred_labels = cp.argmax(self.layers['softmax'].value, axis=1)
+            self.softmax.forward()
+            self.loss.forward()
+            total_loss += self.loss.value
+            pred_labels = cp.argmax(self.softmax.value, axis=1)
             pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
         accuracy = cp.mean(pred_results == label)
         return accuracy, total_loss
@@ -155,7 +170,7 @@ class CIFAR(object):
         # self.layers['softmax'] = get_node_from_graph('SoftMax:34')
         # self.input = get_node_from_graph('Variable:0')
         # self.label = get_node_from_graph('Variable:1')
-        adam = pt.optimizer.Adam(pt.default_graph, self.layers['loss'], LEARNING_RATE)
+        adam = pt.optimizer.Adam(pt.default_graph, self.loss, LEARNING_RATE)
         # tqdm stuff
         for epoch in range(100):
             np.random.shuffle(random_index)
@@ -190,7 +205,7 @@ class CIFAR(object):
                 # print('%f %f %f %f %f %f' % (time2 - time1, time3 - time2, time4 - time3,
                 #                              time5 - time4, time6 - time5, time7 - time6))
                 adam.step()
-                total_loss += self.layers['loss'].value
+                total_loss += self.loss.value
                 adam.update()
 
                 bar.set_description("Epoch %d Loss %.6f ValidationLoss %.3f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), validation_loss, last_accuracy, train_accuracy))

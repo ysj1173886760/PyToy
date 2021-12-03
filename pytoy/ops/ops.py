@@ -10,13 +10,14 @@
 
 import cupy as cp
 import numpy as np
+
 from ..core import Node
 
 # abc for operator
 class Operator(Node):
     pass
 
-class Add(Operator):
+class AddOperator(Operator):
 
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)
@@ -41,7 +42,7 @@ class Add(Operator):
             # reduce them
             return cp.sum(self.graident, axis=boardcast_dims, keepdims=True)
 
-class MatMul(Operator):
+class MatMulOperator(Operator):
     
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)
@@ -58,7 +59,7 @@ class MatMul(Operator):
         else:
             return cp.matmul(self.parents[0].value.T, self.graident)
 
-class Boardcast(Operator):
+class BoardcastOperator(Operator):
     
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)
@@ -76,7 +77,7 @@ class Boardcast(Operator):
     def get_graident(self, parent):
         return cp.sum(self.graident, axis=self.boardcast_dims, keepdims=True)
     
-class Reshape(Operator):
+class ReshapeOperator(Operator):
     
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)
@@ -104,7 +105,7 @@ class SoftMax(Operator):
     def get_graident(self, parent):
         raise NotImplementedError("Do not use softmax to do BP")
 
-class ReLU(Operator):
+class ReLUOperator(Operator):
     
     def __init__(self, *parents, **kargs) -> None:
         Operator.__init__(self, *parents, **kargs)
@@ -128,6 +129,9 @@ class ConvOperator(Operator):
     """
     
     def __init__(self, *parents, **kargs) -> None:
+        """[summary]
+        params should have kernel_size, stride, padding, channel_in, channel_out
+        """
         Operator.__init__(self, *parents, **kargs)
         self.kernel_size = kargs.get('kernel_size')
         self.stride = kargs.get('stride')
@@ -314,3 +318,26 @@ class BatchNormOperator(Operator):
 
         else:
             return cp.sum(self.graident, axis=0, keepdims=True)
+
+class DropOutOperator(Operator):
+    
+    # for the sake of simplicity saving, i saved all the params in kargs
+    def __init__(self, *parents, **kargs) -> None:
+        """[summary]
+        drop_prob: drop probability
+        """
+        Operator.__init__(self, *parents, **kargs)
+        self.dims = parents[0].dims
+        drop_prob = kargs.get('drop_prob')
+        assert 0 < drop_prob < 1
+        self.keep_prob = 1 - drop_prob
+
+    def compute(self):
+        if self.graph.training:
+            self.activated = cp.random.uniform(size=(self.dims)) < self.keep_prob
+            self.value = cp.multiply(self.activated, self.parents[0].value) / self.keep_prob
+        else:
+            self.value = self.parents[0].value
+
+    def get_graident(self, parent):
+        return cp.multiply(self.graident, self.activated) / self.keep_prob
