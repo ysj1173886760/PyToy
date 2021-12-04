@@ -34,11 +34,11 @@ class AddOperator(Operator):
     def get_graident(self, parent):
         # also support dynamic boardcast here
         # but not support automatic squeeze the dims
-        if self.graident.shape == parent.value.shape:
+        if self.graident.shape == parent.dims:
             return self.graident
         else:
             # calc the boardcast dims
-            boardcast_dims = tuple([index for index, (i, j) in enumerate(zip(self.graident.shape, parent.value.shape)) if i != j])
+            boardcast_dims = tuple([index for index, (i, j) in enumerate(zip(self.graident.shape, parent.dims)) if i != j])
             # reduce them
             return cp.sum(self.graident, axis=boardcast_dims, keepdims=True)
 
@@ -50,14 +50,24 @@ class MatMulOperator(Operator):
         self.dims = (parents[0].dims[0], parents[1].dims[1])
 
     def compute(self):
-        self.value = cp.matmul(self.parents[0].value, self.parents[1].value)
+        self.lhs = self.parents[0].value
+        self.rhs = self.parents[1].value
+        self.value = cp.matmul(self.lhs, self.rhs)
 
     def get_graident(self, parent):
         # (m, n) = (m, p) * (p, n)
         if parent is self.parents[0]:
-            return cp.matmul(self.graident, self.parents[1].value.T)
+            return cp.matmul(self.graident, self.rhs.T)
         else:
-            return cp.matmul(self.parents[0].value.T, self.graident)
+            return cp.matmul(self.lhs.T, self.graident)
+
+    def vacuum(self, forward=True):
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+            self.lhs = None
+            self.rhs = None
 
 class BoardcastOperator(Operator):
     
@@ -112,10 +122,18 @@ class ReLUOperator(Operator):
         self.dims = parents[0].dims
         
     def compute(self):
-        self.value = cp.maximum(self.parents[0].value, 0)
+        self.mask = self.parents[0].value > 0
+        self.value = cp.multiply(self.parents[0].value, self.mask)
     
     def get_graident(self, parent):
-        return cp.where(self.value > 0, self.graident, 0)
+        return cp.multiply(self.mask, self.graident)
+
+    def vacuum(self, forward=True):
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+            self.mask = None
 
 class ConvOperator(Operator):
     # assume parent[0] is input, parent[1] is kernel
@@ -151,24 +169,25 @@ class ConvOperator(Operator):
         self.dims = (self.input_shape[0], self.channel_out, self.height_out, self.width_out)
     
     def compute(self):
-        self.input_pad = cp.pad(self.parents[0].value, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant')
+        input_pad = cp.pad(self.parents[0].value, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), 'constant')
         self.col = cp.empty((self.input_shape[0], self.mat_h, self.mat_w))
         cur = 0
         for x in range(self.height_out):
             for y in range(self.width_out):
                 bias_x = x * self.stride
                 bias_y = y * self.stride
-                self.col[:, cur, :] = self.input_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.input_shape[0], -1)
+                self.col[:, cur, :] = input_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.input_shape[0], -1)
                 cur = cur + 1
         self.value = cp.matmul(self.col, self.parents[1].value.reshape(-1, self.parents[1].value.shape[-1]))
         self.value = cp.moveaxis(self.value.reshape(self.input_shape[0], self.height_out, self.width_out, self.channel_out), 3, 1)
+        self.weight = self.parents[1].value
 
     def get_graident(self, parent):
         if parent is self.parents[0]:
             # self.graident N, Cout, H, W
             # self.weight Cin, k, k, Cout
             # top_diff Cin, k, k, N, H, W
-            top_diff = cp.matmul(self.parents[1].value.reshape(-1, self.channel_out), 
+            top_diff = cp.matmul(self.weight.reshape(-1, self.channel_out), 
                                     cp.transpose(self.graident, [1, 0, 2, 3]).reshape(self.channel_out, -1)).reshape(self.channel_in * self.kernel_size * self.kernel_size, self.input_shape[0], -1)
             top_diff = cp.transpose(top_diff, [1, 0, 2]).reshape(self.input_shape[0], self.channel_in * self.kernel_size * self.kernel_size, self.dims[2], self.dims[3])
             bottom_diff = cp.empty((self.input_shape[0], self.channel_in, self.height, self.width))
@@ -187,6 +206,15 @@ class ConvOperator(Operator):
             top_diff_col = cp.transpose(self.graident, [1, 0, 2, 3]).reshape(self.graident.shape[1], -1)
             col_reshape = cp.transpose(self.col.reshape(-1, self.col.shape[-1]), [1, 0])
             return cp.matmul(col_reshape, top_diff_col.T).reshape(self.channel_in, self.kernel_size, self.kernel_size, self.channel_out)
+
+    def vacuum(self, forward=True):
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+            self.mask = None
+            self.col = None
+            self.weight = None
     
     def tmp(self, parent):
         # TODO: figure out why this was wrong
@@ -205,7 +233,7 @@ class ConvOperator(Operator):
                     backward_col[:, cur, :] = top_diff_pad[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size].reshape(self.graident.shape[0], -1)
                     cur = cur + 1
 
-            weight_tmp = cp.transpose(self.parents[1].value, [3, 1, 2, 0]).reshape(self.channel_out, -1, self.channel_in)[:, ::-1, :].reshape(-1, self.channel_in)
+            weight_tmp = cp.transpose(self.weight, [3, 1, 2, 0]).reshape(self.channel_out, -1, self.channel_in)[:, ::-1, :].reshape(-1, self.channel_in)
             bottom_diff = cp.matmul(backward_col, weight_tmp)
             bottom_diff = cp.transpose(bottom_diff.reshape(self.graident.shape[0], self.input_shape[2], self.input_shape[3], self.input_shape[1]), [0, 3, 1, 2])
             return bottom_diff
@@ -282,6 +310,13 @@ class MaxPoolingOperator(Operator):
                             bottom_diff[:, :, bias_x: bias_x + self.kernel_size, bias_y: bias_y + self.kernel_size])
         return bottom_diff
 
+    def vacuum(self, forward=True):
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+            self.max_elements = None
+
 class BatchNormOperator(Operator):
     """[summary]
     we got 3 parents here.
@@ -327,8 +362,8 @@ class BatchNormOperator(Operator):
             self.update_running_variables()
         else:
             if self.running_mean_x is not None:
-                self.mean_x = self.running_mean_x.copy()
-                self.var_x = self.running_var_x.copy()
+                self.mean_x = self.running_mean_x
+                self.var_x = self.running_var_x
             else:
                 self.mean_x = 0.0
                 self.var_x = 1.0
@@ -338,10 +373,11 @@ class BatchNormOperator(Operator):
         self.x_minus_mean = cp.subtract(self.parents[0].value, self.mean_x)
         self.standard_x = cp.divide(self.x_minus_mean, self.stddev_x)
         self.value = self.parents[1].value * self.standard_x + self.parents[2].value
+        self.rhs = self.parents[1].value
 
     def get_graident(self, parent):
         if parent == self.parents[0]:
-            standard_grad = self.graident * self.parents[1].value
+            standard_grad = self.graident * self.rhs
 
             var_grad = cp.sum(standard_grad * self.x_minus_mean * -0.5 * self.var_x ** (-3/2),
                             axis=0, keepdims=True)
@@ -360,6 +396,17 @@ class BatchNormOperator(Operator):
 
         else:
             return cp.sum(self.graident, axis=0, keepdims=True)
+
+    def vacuum(self, forward=True):
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+            self.x_minus_mean = None
+            self.standard_x = None
+            self.rhs = None
+            self.var_x = None
+            self.stddev_x = None
 
 class DropOutOperator(Operator):
     
@@ -383,6 +430,13 @@ class DropOutOperator(Operator):
 
     def get_graident(self, parent):
         return cp.multiply(self.graident, self.activated) / self.keep_prob
+
+    def vacuum(self, forward=True):
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+            self.activated = None
 
 class AvgPoolingOperator(Operator):
     def __init__(self, *parents, **kargs) -> None:

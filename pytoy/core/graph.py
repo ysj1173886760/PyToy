@@ -15,6 +15,7 @@ class Graph:
     def __init__(self) -> None:
         self.nodes = []
         self.training = True
+        self.low_precise = False
 
     def add_node(self, node):
         self.nodes.append(node)
@@ -40,6 +41,24 @@ class Graph:
         """[Evaluate Mode]
         """
         self.training = False
+    
+    def low_precise(self):
+        self.low_precise = True
+    
+    def reset_mark(self):
+        for node in self.nodes:
+            node.mark = False
+    
+    def reset_pece_succ(self):
+        for node in self.nodes:
+            node.reset_pece_succ()
+
+    def calc_degree(self):
+        for node in self.nodes:
+            node.calc_degree()
+    
+    def set_mark(self, node):
+        node.set_mark()
     
     def param_count(self):
         total = 0

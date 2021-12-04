@@ -30,6 +30,12 @@ class Node(object):
         self.value = None
         self.graident = None
 
+        self.in_degree = 0
+        self.out_degree = 0
+        self.pecedent = 0
+        self.successor = 0
+        self.mark = False
+
         for parent in self.parents:
             parent.children.append(self)
 
@@ -50,12 +56,50 @@ class Node(object):
     def get_children(self):
         return self.children
     
+    def reset_pece_succ(self):
+        self.pecedent = self.in_degree
+        self.successor = self.out_degree
+    
+    def set_mark(self):
+        self.mark = True
+        for parent in self.parents:
+            if parent.mark == False:
+                parent.set_mark()
+    
+    def calc_degree(self):
+        for parent in self.parents:
+            if parent.mark:
+                self.in_degree += 1
+
+        for child in self.children:
+            if child.mark:
+                self.out_degree += 1
+    
     def forward(self):
         # compute your precedent
         for node in self.parents:
             if node.value is None:
                 node.forward()
         self.compute()
+    
+    def done(self, forward=True):
+        if forward:
+            for parent in self.parents:
+                parent.successor -= 1
+                if parent.successor == 0:
+                    parent.vacuum(True)
+                    # cp._default_memory_pool.free_all_blocks()
+        else:
+            self.vacuum(False)
+            # cp._default_memory_pool.free_all_blocks()
+    
+    def vacuum(self, forward=True):
+
+        if forward:
+            self.value = None
+        else:
+            self.graident = None
+        # cp._default_memory_pool.free_all_blocks()
 
     @abc.abstractmethod
     def compute(self):
@@ -117,3 +161,12 @@ class Variable(Node):
         # or maybe reset value explicitly is better?
         self.reset_value(True)
         self.value = value
+
+    def vacuum(self, forward=True):
+        if self.trainable:
+            return
+
+        if forward:
+            self.value = None
+        else:
+            self.graident = None

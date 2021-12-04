@@ -6,7 +6,7 @@ import os
 from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
-from pytoy.layer.layer import AvgPooling, BasicBlock, BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
+from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling, DropOut, ReLU
 from pytoy.ops.loss import CrossEntropyWithSoftMax
 from pytoy.ops.ops import SoftMax
 import tqdm
@@ -96,24 +96,42 @@ class dataAugumentor():
 
 class CIFAR(object):
     def build(self):
-        self.input = Variable((BATCH_SIZE, 3, 32, 32), init=False, trainable=False)
-        self.label = Variable((BATCH_SIZE, ), init=False, trainable=False)
+        self.input = Variable((BATCH_SIZE, 3, 32, 32), init=False, trainable=False, name='input')
+        self.label = Variable((BATCH_SIZE, ), init=False, trainable=False, name='label')
 
-        # resnet18
-        net = Conv(self.input, 3, 64, 3, 1, 1, std=0.001, name='conv1')
-        net = BatchNorm(net, name='bn2')
-        net = BasicBlock(net, 64, 64, 1, name='res1_1')
-        net = BasicBlock(net, 64, 64, 1, name='res1_2')
-        net = BasicBlock(net, 64, 128, 2, name='res2_1')
-        net = BasicBlock(net, 128, 128, 1, name='res2_2')
-        net = BasicBlock(net, 128, 256, 2, name='res3_1')
-        net = BasicBlock(net, 256, 256, 1, name='res3_2')
-        net = BasicBlock(net, 256, 512, 2, name='res4_1')
-        net = BasicBlock(net, 512, 512, 1, name='res4_2')
-        net = AvgPooling(net, 4, 4)
+        net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
+        net = ReLU(net, name='relu1_2')
+        net = BatchNorm(net, name='bn1_3')
+        net = Conv(net, 32, 32, 3, 1, 1, name='conv1_4', std=0.001)
+        net = ReLU(net, name='relu1_5')
+        net = BatchNorm(net, name='bn1_6')
+        net = MaxPooling(net, 2, 2, name='pool1_7')
+        net = DropOut(net, 0.3, name='dropout1_8')
+
+        net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
+        net = ReLU(net, name='relu2_2')
+        net = BatchNorm(net, name='bn2_3')
+        net = Conv(net, 64, 64, 3, 1, 1, name='conv2_4', std=0.001)
+        net = ReLU(net, name='relu2_5')
+        net = BatchNorm(net, name='bn2_6')
+        net = MaxPooling(net, 2, 2, name='pool2_7')
+        net = DropOut(net, 0.5, name='dropout2_8')
+
+        net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
+        net = ReLU(net, name='relu3_2')
+        net = BatchNorm(net, name='bn3_3')
+        net = Conv(net, 128, 128, 3, 1, 1, name='conv3_4', std=0.001)
+        net = ReLU(net, name='relu3_5')
+        net = BatchNorm(net, name='bn3_6')
+        net = MaxPooling(net, 2, 2, name='pool3_7')
+        net = DropOut(net, 0.5, name='dropout3_8')
 
         net = Flatten(net, name = 'flatten')
-        net = Dense(net, 512, 10, name='fc4_1', std=0.001)
+        net = Dense(net, 2048, 128, name='fc4_1', std=0.001)
+        net = ReLU(net, name='relu4_2')
+        net = BatchNorm(net, name='bn4_3')
+        net = DropOut(net, 0.5, name='dropout4_4')
+        net = Dense(net, 128, 10, name='fc4_5', std=0.001)
 
         self.softmax = SoftMax(net)
         self.loss = CrossEntropyWithSoftMax(net, self.label)
@@ -145,14 +163,9 @@ class CIFAR(object):
         validation_loss = 0.0
         self.graph = pt.default_graph
 
-        saver = pt.trainer.Saver('./model')
-        # saver.load()
-        # self.layers = {}
-        # self.layers['loss'] = get_node_from_graph('CrossEntropyWithSoftMax:35')
-        # self.layers['softmax'] = get_node_from_graph('SoftMax:34')
-        # self.input = get_node_from_graph('Variable:0')
-        # self.label = get_node_from_graph('Variable:1')
+        saver = pt.saver.Saver('./model')
         adam = pt.optimizer.Adam(pt.default_graph, self.loss, LEARNING_RATE)
+        trainer = pt.trainer.Trainer(adam)
         # tqdm stuff
         for epoch in range(100):
             np.random.shuffle(random_index)
@@ -165,28 +178,10 @@ class CIFAR(object):
                 batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
                 batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
 
-                # time1 = time.time()
-                self.input.set_value(batch_image)
-                self.label.set_value(batch_label)
-                # time2 = time.time()
-                # self.layers['loss'].forward()
-                # time3 = time.time()
-                # total_loss += self.layers['loss'].value
-
-                # time4 = time.time()
-                # for node in trainable_node:
-                #     node.backward(self.layers['loss'])
-
-                # time5 = time.time()
-                # for node in trainable_node:
-                #     node.set_value(node.value - LEARNING_RATE * node.graident)
-                # time6 = time.time()
-                
-                # pt.default_graph.clear_graident()
-                # time7 = time.time()
-                # print('%f %f %f %f %f %f' % (time2 - time1, time3 - time2, time4 - time3,
-                #                              time5 - time4, time6 - time5, time7 - time6))
-                adam.step()
+                # self.input.set_value(batch_image)
+                # self.label.set_value(batch_label)
+                trainer.train({'input': batch_image, 'label': batch_label})
+                # adam.step()
                 total_loss += self.loss.value
                 adam.update()
 

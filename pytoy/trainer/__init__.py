@@ -9,3 +9,4 @@
 '''
 
 from .saver import *
+from .trainer import *
