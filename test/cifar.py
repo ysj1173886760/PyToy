@@ -3,6 +3,7 @@ import numpy as np
 import time
 import pytoy as pt
 import os
+import threading
 from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
@@ -31,6 +32,17 @@ def load_data(data_dir, data_list):
             res_data = np.concatenate((res_data, images))
             res_label = np.concatenate((res_label, labels))
     return res_data, res_label
+
+class BackgroundVacuum(threading.Thread):
+    def __init__(self, delay):
+        threading.Thread.__init__(self)
+        self.delay = delay
+        self.daemon = True
+
+    def run(self):
+        while True:
+            time.sleep(self.delay)
+            cp._default_memory_pool.free_all_blocks()
 
 class dataAugumentor():
     def __init__(self, toTensor=True, whiten=True, crop=True, rotate=True, flip=True, noise=True) -> None:
@@ -175,6 +187,8 @@ class CIFAR(object):
         return accuracy, total_loss
 
     def train(self, train_data, train_label, test_data, test_label):
+        bg_thread = BackgroundVacuum(1)
+        bg_thread.start()
         random_index = np.arange(train_data.shape[0]).astype(int)
         max_batch = train_data.shape[0] // BATCH_SIZE
         last_accuracy = 0.0
