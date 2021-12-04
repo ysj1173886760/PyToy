@@ -10,6 +10,7 @@ from pytoy.layer.layer import BatchNorm, Conv, Dense, Flatten, MaxPooling, DropO
 from pytoy.ops.loss import CrossEntropyWithSoftMax
 from pytoy.ops.ops import SoftMax
 import tqdm
+import cProfile
 
 def unpickle(file):
     import pickle
@@ -133,6 +134,24 @@ class CIFAR(object):
         net = DropOut(net, 0.5, name='dropout4_4')
         net = Dense(net, 128, 10, name='fc4_5', std=0.001)
 
+        # net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
+        # net = BatchNorm(net, name='bn1_2')
+        # net = ReLU(net, name='relu1_3')
+        # net = MaxPooling(net, 2, 2, name='pool1_4')
+
+        # net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
+        # net = BatchNorm(net, name='bn2_2')
+        # net = ReLU(net, name='relu2_3')
+        # net = MaxPooling(net, 2, 2, name='pool2_4')
+
+        # net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
+        # net = BatchNorm(net, name='bn3_2')
+        # net = ReLU(net, name='relu3_3')
+        # net = MaxPooling(net, 2, 2, name='pool3_4')
+
+        # net = Flatten(net, name = 'flatten')
+        # net = Dense(net, 2048, 10, name='fc4_1', std=0.001)
+
         self.softmax = SoftMax(net)
         self.loss = CrossEntropyWithSoftMax(net, self.label)
     
@@ -180,8 +199,14 @@ class CIFAR(object):
 
                 # self.input.set_value(batch_image)
                 # self.label.set_value(batch_label)
-                trainer.train({'input': batch_image, 'label': batch_label})
                 # adam.step()
+
+                # prof = cProfile.Profile()
+                # prof.enable()
+                trainer.train({'input': batch_image, 'label': batch_label})
+                # prof.create_stats()
+                # prof.print_stats()
+
                 total_loss += self.loss.value
                 adam.update()
 
@@ -189,6 +214,9 @@ class CIFAR(object):
 
             # saver.save()
             last_accuracy, validation_loss = self.evaluate(test_data, test_label)
+
+def computeMse(input1, input2):
+    return np.sum(np.square(input1.flatten() - input2.flatten()))
 
 if __name__ == '__main__':
     LEARNING_RATE = 0.01

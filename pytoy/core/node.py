@@ -163,10 +163,11 @@ class Variable(Node):
         self.value = value
 
     def vacuum(self, forward=True):
-        if self.trainable:
-            return
+        return
+        # if self.trainable:
+        #     return
 
-        if forward:
-            self.value = None
-        else:
-            self.graident = None
+        # if forward:
+        #     self.value = None
+        # else:
+        #     self.graident = None
