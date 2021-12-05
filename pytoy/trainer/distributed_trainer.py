@@ -9,7 +9,8 @@
 '''
 
 from numpy.lib.arraysetops import isin
-from pytoy.core.core import get_trainable_variables_with_mark, update_node_graident, update_node_value
+from pytoy.core.core import get_node_from_graph, get_trainable_variables_with_mark, update_node_graident, update_node_value
+from pytoy.ops.ops import BatchNormOperator
 from ..distribute import ps
 from .trainer import Trainer
 
@@ -42,5 +43,20 @@ class DistributedTrainerParameterServer(Trainer):
 
         node_graidents_dict = self.ps_client.pull_graidents()
 
-        update_node_graident(node_graidents_dict, self.graph)
+        # update graidents
+        for name, graident in node_graidents_dict.items():
+            node = get_node_from_graph(name, graph=self.graph)
+            if isinstance(node, BatchNormOperator):
+                if node.GPU:
+                    node.running_mean_x = cp.array(graident[0])
+                    node.running_var_x = cp.array(graident[1])
+                else:
+                    node.running_mean_x = graident[0]
+                    node.running_var_x = graident[1]
+            else:
+                if node.GPU:
+                    node.graident = cp.array(graident)
+                else:
+                    node.graident = graident
+
         self.optimizer.update()

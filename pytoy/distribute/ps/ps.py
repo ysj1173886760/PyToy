@@ -39,7 +39,7 @@ class ParameterService(parameter_server_pb2_grpc.ParameterServiceServicer):
         self.is_init = False
     
     def Push(self, push_req, context):
-        node_graidents_dict = DistributeCommon._deserialize_proto_node_graidents(push_req.node_graidents)
+        node_graidents_dict = DistributeCommon._deserialize_proto_node_graidents(push_req.node_graidents, False)
         
         if self.sync:
             self._push_sync(node_graidents_dict)
@@ -103,14 +103,20 @@ class ParameterService(parameter_server_pb2_grpc.ParameterServiceServicer):
             self.batch_num = 0
 
     def _update_graidents_cache(self, node_graidents_dict):
-        for name, graident in node_graidents_dict.items():
-            if name in self.node_graidents_cache:
-                self.node_graidents_cache[name] += graident
+        for name, (graident, type) in node_graidents_dict.items():
+            if type == 'BatchNormOperator':
+                if name in self.node_graidents_cache:
+                    self.node_graidents_cache[name] += graident
+                else:
+                    self.node_graidents_cache[name] = graident
             else:
-                self.node_graidents_cache[name] = graident
+                if name in self.node_graidents_cache:
+                    self.node_graidents_cache[name] += graident
+                else:
+                    self.node_graidents_cache[name] = graident
 
     def _serialize_pull_resp(self):
-        proto_node_graidents = DistributeCommon._serialize_proto_node_graidents(self.node_graidents_cache)
+        proto_node_graidents = DistributeCommon._serialize_proto_node_graidents(self.node_graidents_cache, False)
         resp = parameter_server_pb2.ParameterPullResp(node_graidents=proto_node_graidents)
         return resp
 
@@ -149,7 +155,7 @@ class ParameterServiceClient(object):
         return ps_var_weights
     
     def push_graidents(self, graidents):
-        proto_node_graidents = DistributeCommon._serialize_proto_node_graidents(graidents)
+        proto_node_graidents = DistributeCommon._serialize_proto_node_graidents(graidents, True)
         push_req = parameter_server_pb2.ParameterPushReq(node_graidents=proto_node_graidents)
 
         resp = self.stub.Push(push_req)
@@ -162,7 +168,7 @@ class ParameterServiceClient(object):
 
         pull_resp = self.stub.Pull(pull_req)
 
-        node_graidents = DistributeCommon._deserialize_proto_node_graidents(pull_resp.node_graidents)
+        node_graidents = DistributeCommon._deserialize_proto_node_graidents(pull_resp.node_graidents, True)
 
         return node_graidents
 

@@ -14,11 +14,13 @@ class Graph:
 
     def __init__(self) -> None:
         self.nodes = []
+        self.mapping = {}
         self.training = True
         self.low_precise = False
 
     def add_node(self, node):
         self.nodes.append(node)
+        self.mapping[node.name] = node
 
     # clear all the graident which computed in this pass
     def clear_graident(self):

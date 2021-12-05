@@ -12,7 +12,7 @@ import queue
 import cupy as cp
 import numpy as np
 
-from pytoy.core.core import get_node_from_graph, get_trainable_variables_with_mark
+from pytoy.core.core import get_bn_nodes_with_mark, get_node_from_graph, get_trainable_variables_with_mark
 
 class Trainer(object):
     
@@ -23,6 +23,7 @@ class Trainer(object):
         self.initialize()
         # only update the nodes with mark
         self.optimizer.trainable_nodes = get_trainable_variables_with_mark(graph=self.graph)
+        self.bn_nodes = get_bn_nodes_with_mark(self.graph)
     
     def initialize(self):
         # remove useless nodes
@@ -36,9 +37,19 @@ class Trainer(object):
         node_graidents = {}
         for node in self.optimizer.trainable_nodes:
             if node.GPU:
-                node_graidents[node.name] = np.array(node.graident.get())
+                node_graidents[node] = np.array(node.graident.get())
             else:
-                node_graidents[node.name] = np.array(node.graident)
+                node_graidents[node] = np.array(node.graident)
+        
+        for node in self.bn_nodes:
+            if node.GPU:
+                var = node.running_var_x.get()
+                mean = node.running_mean_x.get()
+            else:
+                var = node.running_var_x
+                mean = node.running_mean_x
+
+            node_graidents[node] = np.concatenate((np.expand_dims(mean, axis=0), np.expand_dims(var, axis=0)), axis=0)
 
         return node_graidents
     

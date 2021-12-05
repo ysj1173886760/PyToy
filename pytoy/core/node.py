@@ -139,6 +139,9 @@ class Node(object):
             for node in self.children:
                 node.reset_value(recursive)
     
+    def get_type(self):
+        return self.__class__.__name__
+    
 class Variable(Node):
     
     def __init__(self, dims, init=False, trainable=False, **kargs) -> None:
@@ -150,11 +153,11 @@ class Variable(Node):
         if init:
             is_bias = kargs.get('bias', False)
             if is_bias:
-                self.value = cp.zeros(dims)
+                self.value = cp.zeros(dims, dtype=cp.int32)
             else:
                 mean = kargs.get('mean', 0.0)
                 std = kargs.get('std', 0.001)
-                self.value = cp.random.normal(loc=mean, scale=std, size=dims)
+                self.value = cp.random.normal(loc=mean, scale=std, size=dims, dtype=cp.float32)
     
     def set_value(self, value):
         assert value.shape == self.dims, '{} {} {}'.format(self.name, value.shape, self.dims)

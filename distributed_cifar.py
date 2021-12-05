@@ -115,7 +115,7 @@ cluster_conf = {
     "workers": [
         "127.0.0.1:6000",
         "127.0.0.1:6001",
-        "127.0.0.1:6002"
+        # "127.0.0.1:6002"
     ]
 }
 
@@ -222,8 +222,8 @@ class CIFAR(object):
             total_loss = 0
             for cur in bar:
                 self.graph.train()
-                batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
-                batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
+                batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE], dtype=cp.float32)
+                batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE], dtype=cp.int32)
 
                 trainer.train({'input': batch_image, 'label': batch_label})
 

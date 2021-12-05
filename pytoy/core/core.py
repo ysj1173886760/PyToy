@@ -8,31 +8,33 @@
 @Desc    :   None
 '''
 
+from pytoy.ops.ops import BatchNormOperator
 from .node import Variable
 from .node import default_graph
 import cupy as cp
 
-def get_trainable_variables_from_graph(node_name=None, name_scope=None, graph=None):
+def get_trainable_variables_from_graph(node_name=None, graph=None):
     if graph is None:
         graph = default_graph
     if node_name is None:
-        return [node for node in default_graph.nodes if isinstance(node, Variable) and node.trainable]
+        return [node for node in graph.nodes if isinstance(node, Variable) and node.trainable]
 
-def get_trainable_variables_with_mark(node_name=None, name_scope=None, graph=None):
+def get_trainable_variables_with_mark(node_name=None, graph=None):
     if graph is None:
         graph = default_graph
     if node_name is None:
-        return [node for node in default_graph.nodes if isinstance(node, Variable) and node.trainable and node.mark]
+        return [node for node in graph.nodes if isinstance(node, Variable) and node.trainable and node.mark]
 
-def get_node_from_graph(node_name, name_scope=None, graph=None):
+def get_bn_nodes_with_mark(graph=None):
     if graph is None:
         graph = default_graph
-    if name_scope:
-        node_name = name_scope + '/' + node_name
-    for node in graph.nodes:
-        if node.name == node_name:
-            return node
-    return None
+    return [node for node in graph.nodes if isinstance(node, BatchNormOperator) and node.mark]
+
+def get_node_from_graph(node_name, graph=None):
+    if graph is None:
+        graph = default_graph
+    
+    return graph.mapping.get(node_name, None)
 
 def update_node_value(value_dict, graph=None):
     if graph is None:
@@ -52,6 +54,6 @@ def update_node_graident(graident_dict, graph=None):
     for name, graident in graident_dict.items():
         node = get_node_from_graph(name, graph=graph)
         if node.GPU:
-            node.value = cp.array(graident)
+            node.graident = cp.array(graident)
         else:
             node.graident = graident
