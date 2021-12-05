@@ -10,16 +10,19 @@
 
 import queue
 import cupy as cp
+import numpy as np
 
-from pytoy.core.core import get_node_from_graph
+from pytoy.core.core import get_node_from_graph, get_trainable_variables_with_mark
 
 class Trainer(object):
     
-    def __init__(self, optimizer) -> None:
+    def __init__(self, optimizer, **kargs) -> None:
         self.optimizer = optimizer
         self.target = optimizer.target
         self.graph = self.target.graph
         self.initialize()
+        # only update the nodes with mark
+        self.optimizer.trainable_nodes = get_trainable_variables_with_mark(graph=self.graph)
     
     def initialize(self):
         # remove useless nodes
@@ -28,6 +31,28 @@ class Trainer(object):
 
         # re-calc the degree affected by the marked nodes
         self.graph.calc_degree()
+    
+    def get_graidents(self):
+        node_graidents = {}
+        for node in self.optimizer.trainable_nodes:
+            if node.GPU:
+                node_graidents[node.name] = np.array(node.graident.get())
+            else:
+                node_graidents[node.name] = np.array(node.graident)
+
+        return node_graidents
+    
+    def _variable_weights_init(self):
+        pass
+
+    def init(self):
+        self._variable_weights_init()
+    
+    def _optimizer_update(self):
+        self.optimizer.update()
+        
+    def update(self):
+        self._optimizer_update()
 
     def train(self, input):
         self.graph.clear_graident()

@@ -2,8 +2,8 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import common_pb2 as common__pb2
-import parameter_server_pb2 as parameter__server__pb2
+from . import common_pb2 as common__pb2
+from . import parameter_server_pb2 as parameter__server__pb2
 
 
 class ParameterServiceStub(object):

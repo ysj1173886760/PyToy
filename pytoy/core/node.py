@@ -20,6 +20,7 @@ class Node(object):
         self.kargs = kargs
         self.graph = kargs.get('graph', default_graph)
         self.need_save = kargs.get('need_save', True)
+        self.GPU = True
         self.gen_node_name(**kargs)
 
         # init graph

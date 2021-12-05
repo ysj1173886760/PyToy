@@ -139,6 +139,7 @@ class Graph:
 
         # 保存图像
         plt.savefig("computing_graph.png")  # save as png
+
     
     
 default_graph = Graph()
