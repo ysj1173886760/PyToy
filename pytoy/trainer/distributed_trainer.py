@@ -36,7 +36,7 @@ class DistributedTrainerParameterServer(Trainer):
         ps_variable_weight = self.ps_client.variable_weights_init(variable_weight_dict)
         update_node_value(ps_variable_weight, self.graph)
 
-        print('[INIT] Initialized Worker Variable Weights')
+        print('[INIT] Initializing Worker Variable Weights')
     
     def _optimizer_update(self):
         self.ps_client.push_graidents(self.get_graidents())
