@@ -1,6 +1,8 @@
-### Write Your Own DeepLearning Framework
+# PyToy
 
-参考[MatrixSlow](https://github.com/zackchen/MatrixSlow)实现的简易的深度学习框架
+#### Still Under Construction
+
+参考[MatrixSlow](https://github.com/zackchen/MatrixSlow)基于numpy和cupy实现的简易的深度学习框架
 
 实现了常见的算子，优化器，基础的损失函数等
 
@@ -19,6 +21,14 @@ loss: CrossEntropyWithSoftmax, L2Loss
 绘制计算图示例
 
 ![20211217144418](https://picsheep.oss-cn-beijing.aliyuncs.com/pic/20211217144418.png)
+
+受到这个[项目](https://github.com/danistefanovic/build-your-own-x)的启发，之后会我会根据这个框架写一个教程，教大家实现一个自己的深度学习框架
+
+当然还是推荐大家去看一下MatrixSlow原作者的书，这里实现的PyToy也是相当于对原框架的一个增强
+
+### Contribution Guidance
+
+项目中有一个todo_list，我会在后面的时间慢慢实现todo_list的内容，也欢迎大家与我联系一起开发
 
 *****
 
