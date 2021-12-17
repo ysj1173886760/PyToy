@@ -4,6 +4,7 @@ import time
 import pytoy as pt
 import os
 import threading
+import argparse
 from pytoy.core.core import get_node_from_graph
 
 from pytoy.core.node import Variable
@@ -107,93 +108,98 @@ class dataAugumentor():
 
         return data
 
+cluster_conf = {
+    "ps": [
+        "127.0.0.1:50050"
+    ],
+    "workers": [
+        "127.0.0.1:6000",
+        "127.0.0.1:6001",
+        # "127.0.0.1:6002"
+    ]
+}
+
 class CIFAR(object):
     def build(self):
         self.input = Variable((BATCH_SIZE, 3, 32, 32), init=False, trainable=False, name='input')
         self.label = Variable((BATCH_SIZE, ), init=False, trainable=False, name='label')
 
-        net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
-        net = ReLU(net, name='relu1_2')
-        net = BatchNorm(net, name='bn1_3')
-        net = Conv(net, 32, 32, 3, 1, 1, name='conv1_4', std=0.001)
-        net = ReLU(net, name='relu1_5')
-        net = BatchNorm(net, name='bn1_6')
-        net = MaxPooling(net, 2, 2, name='pool1_7')
-        net = DropOut(net, 0.3, name='dropout1_8')
-
-        net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
-        net = ReLU(net, name='relu2_2')
-        net = BatchNorm(net, name='bn2_3')
-        net = Conv(net, 64, 64, 3, 1, 1, name='conv2_4', std=0.001)
-        net = ReLU(net, name='relu2_5')
-        net = BatchNorm(net, name='bn2_6')
-        net = MaxPooling(net, 2, 2, name='pool2_7')
-        net = DropOut(net, 0.5, name='dropout2_8')
-
-        net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
-        net = ReLU(net, name='relu3_2')
-        net = BatchNorm(net, name='bn3_3')
-        net = Conv(net, 128, 128, 3, 1, 1, name='conv3_4', std=0.001)
-        net = ReLU(net, name='relu3_5')
-        net = BatchNorm(net, name='bn3_6')
-        net = MaxPooling(net, 2, 2, name='pool3_7')
-        net = DropOut(net, 0.5, name='dropout3_8')
-
-        net = Flatten(net, name = 'flatten')
-        net = Dense(net, 2048, 128, name='fc4_1', std=0.001)
-        net = ReLU(net, name='relu4_2')
-        net = BatchNorm(net, name='bn4_3')
-        net = DropOut(net, 0.5, name='dropout4_4')
-        net = Dense(net, 128, 10, name='fc4_5', std=0.001)
-
         # net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
-        # net = BatchNorm(net, name='bn1_2')
-        # net = ReLU(net, name='relu1_3')
-        # net = MaxPooling(net, 2, 2, name='pool1_4')
+        # net = ReLU(net, name='relu1_2')
+        # net = BatchNorm(net, name='bn1_3')
+        # net = Conv(net, 32, 32, 3, 1, 1, name='conv1_4', std=0.001)
+        # net = ReLU(net, name='relu1_5')
+        # net = BatchNorm(net, name='bn1_6')
+        # net = MaxPooling(net, 2, 2, name='pool1_7')
+        # net = DropOut(net, 0.3, name='dropout1_8')
 
         # net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
-        # net = BatchNorm(net, name='bn2_2')
-        # net = ReLU(net, name='relu2_3')
-        # net = MaxPooling(net, 2, 2, name='pool2_4')
+        # net = ReLU(net, name='relu2_2')
+        # net = BatchNorm(net, name='bn2_3')
+        # net = Conv(net, 64, 64, 3, 1, 1, name='conv2_4', std=0.001)
+        # net = ReLU(net, name='relu2_5')
+        # net = BatchNorm(net, name='bn2_6')
+        # net = MaxPooling(net, 2, 2, name='pool2_7')
+        # net = DropOut(net, 0.5, name='dropout2_8')
 
         # net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
-        # net = BatchNorm(net, name='bn3_2')
-        # net = ReLU(net, name='relu3_3')
-        # net = MaxPooling(net, 2, 2, name='pool3_4')
+        # net = ReLU(net, name='relu3_2')
+        # net = BatchNorm(net, name='bn3_3')
+        # net = Conv(net, 128, 128, 3, 1, 1, name='conv3_4', std=0.001)
+        # net = ReLU(net, name='relu3_5')
+        # net = BatchNorm(net, name='bn3_6')
+        # net = MaxPooling(net, 2, 2, name='pool3_7')
+        # net = DropOut(net, 0.5, name='dropout3_8')
 
         # net = Flatten(net, name = 'flatten')
-        # net = Dense(net, 2048, 10, name='fc4_1', std=0.001)
+        # net = Dense(net, 2048, 128, name='fc4_1', std=0.001)
+        # net = ReLU(net, name='relu4_2')
+        # net = BatchNorm(net, name='bn4_3')
+        # net = DropOut(net, 0.5, name='dropout4_4')
+        # net = Dense(net, 128, 10, name='fc4_5', std=0.001)
+
+        net = Conv(self.input, 3, 32, 3, 1, 1, name='conv1_1', std=0.001)
+        net = BatchNorm(net, name='bn1_2')
+        net = ReLU(net, name='relu1_3')
+        net = MaxPooling(net, 2, 2, name='pool1_4')
+
+        net = Conv(net, 32, 64, 3, 1, 1, name='conv2_1', std=0.001)
+        net = BatchNorm(net, name='bn2_2')
+        net = ReLU(net, name='relu2_3')
+        net = MaxPooling(net, 2, 2, name='pool2_4')
+
+        net = Conv(net, 64, 128, 3, 1, 1, name='conv3_1', std=0.001)
+        net = BatchNorm(net, name='bn3_2')
+        net = ReLU(net, name='relu3_3')
+        net = MaxPooling(net, 2, 2, name='pool3_4')
+
+        net = Flatten(net, name = 'flatten')
+        net = Dense(net, 2048, 10, name='fc4_1', std=0.001)
 
         self.softmax = SoftMax(net)
         self.loss = CrossEntropyWithSoftMax(net, self.label)
     
     def evaluate(self, test_data, test_label):
-        test = test_data
-        label = test_label
+        test = cp.array(test_data)
+        label = cp.array(test_label)
         pred_results = cp.zeros([test.shape[0]])
         total_loss = 0
         self.graph.evaluate()
         
-        for idx in range(int(test_data.shape[0] / BATCH_SIZE)):
-            batch_images = cp.array(test_data[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE], dtype=cp.float32)
-            batch_label = cp.array(label[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE], dtype=cp.int32)
-
+        for idx in range(int(test.shape[0] / BATCH_SIZE)):
+            batch_images = test[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE]
             self.input.set_value(batch_images)
-            self.label.set_value(batch_label)
-
+            self.label.set_value(label[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE])
             self.softmax.forward()
             self.loss.forward()
-
             total_loss += self.loss.value
             pred_labels = cp.argmax(self.softmax.value, axis=1)
             pred_results[idx * BATCH_SIZE : (idx + 1) * BATCH_SIZE] = pred_labels
-
-        accuracy = np.mean(pred_results.get() == label)
-
+        accuracy = cp.mean(pred_results == label)
         return accuracy, total_loss
 
     def train(self, train_data, train_label, test_data, test_label):
-        # bg_thread = BackgroundVacuum(5)
+        # bg_thread = BackgroundVacuum(1)
         # bg_thread.start()
         random_index = np.arange(train_data.shape[0]).astype(int)
         max_batch = train_data.shape[0] // BATCH_SIZE
@@ -204,7 +210,9 @@ class CIFAR(object):
 
         saver = pt.saver.Saver('./model')
         adam = pt.optimizer.Adam(pt.default_graph, self.loss, LEARNING_RATE)
-        trainer = pt.trainer.Trainer(adam)
+        trainer = pt.distributed_trainer.DistributedTrainerParameterServer(adam, cluster_conf=cluster_conf)
+        trainer.init()
+
         # tqdm stuff
         for epoch in range(100):
             np.random.shuffle(random_index)
@@ -214,21 +222,13 @@ class CIFAR(object):
             total_loss = 0
             for cur in bar:
                 self.graph.train()
-                batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
-                batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE])
+                batch_image = cp.array(train_data[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE], dtype=cp.float32)
+                batch_label = cp.array(train_label[cur * BATCH_SIZE: (cur + 1) * BATCH_SIZE], dtype=cp.int32)
 
-                # self.input.set_value(batch_image)
-                # self.label.set_value(batch_label)
-                # adam.step()
-
-                # prof = cProfile.Profile()
-                # prof.enable()
                 trainer.train({'input': batch_image, 'label': batch_label})
-                # prof.create_stats()
-                # prof.print_stats()
 
                 total_loss += self.loss.value
-                adam.update()
+                trainer.update()
 
                 bar.set_description("Epoch %d Loss %.6f ValidationLoss %.3f ValidationAccuracy %.3f TrainAccuracy %.3f" % (epoch, total_loss / (cur + 1), validation_loss, last_accuracy, train_accuracy))
 
@@ -239,21 +239,32 @@ def computeMse(input1, input2):
     return np.sum(np.square(input1.flatten() - input2.flatten()))
 
 if __name__ == '__main__':
-    LEARNING_RATE = 0.01
-    DATA_DIR = './data'
-    BATCH_SIZE = 200
-    data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
-    test_list = ['test_batch']
-    
-    # load train data
-    train_data, train_label = load_data(DATA_DIR, data_list)
-    # load test data
-    test_data, test_label = load_data(DATA_DIR, test_list)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--role', type=str)
+    parser.add_argument('--worker_index', type=int)
+    args = parser.parse_args()
 
-    augumentor = dataAugumentor(toTensor=True, whiten=True, crop=False, rotate=False, flip=False, noise=False)
+    role = args.role
 
-    train_data = augumentor.augument(train_data, True)
-    test_data = augumentor.augument(test_data, False)
-    cifar = CIFAR()
-    cifar.build()
-    cifar.train(train_data, train_label, test_data, test_label)
+    if role == 'ps':
+        server = pt.ps.ParameterServiceServer(cluster_conf, True)
+        server.serve()
+    else:
+        LEARNING_RATE = 0.01
+        DATA_DIR = './data'
+        BATCH_SIZE = 100
+        data_list = ['data_batch_1', 'data_batch_2', 'data_batch_3', 'data_batch_4', 'data_batch_5']
+        test_list = ['test_batch']
+        
+        # load train data
+        train_data, train_label = load_data(DATA_DIR, data_list)
+        # load test data
+        test_data, test_label = load_data(DATA_DIR, test_list)
+
+        augumentor = dataAugumentor(toTensor=True, whiten=True, crop=False, rotate=False, flip=False, noise=False)
+
+        train_data = augumentor.augument(train_data, True)
+        test_data = augumentor.augument(test_data, False)
+        cifar = CIFAR()
+        cifar.build()
+        cifar.train(train_data, train_label, test_data, test_label)
