@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+message Node {
+    string name = 1;
+    string node_type = 2;
+}
+
+message Matrix {
+    repeated float value = 1;
+    repeated int32 dims = 2;
+}
+
+message NodeGraidents {
+    repeated Node nodes = 1;
+    repeated Matrix graidents = 2;
+}
+
+message VariableWeightsReqResp {
+    repeated Node variables = 1;
+    repeated Matrix weights = 2;
+}
